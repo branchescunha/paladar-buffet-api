@@ -8,7 +8,8 @@ export function cookieOptions(env: Env): CookieOptions {
   return {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: env.SESSION_SAME_SITE,
+    domain: env.SESSION_COOKIE_DOMAIN || undefined,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000
   };

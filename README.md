@@ -63,6 +63,8 @@ Variaveis principais:
 - `APP_URL`
 - `WEB_URL`
 - `SESSION_SECRET`
+- `SESSION_COOKIE_DOMAIN`
+- `SESSION_SAME_SITE`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `RESEND_API_KEY`
@@ -94,7 +96,9 @@ Para seed local opcional:
 
 Nao existe cadastro publico. Um usuario administrativo so consegue entrar se existir previamente em `AdminUser`, estiver ativo e tiver role `ADMIN`.
 
-No login Google, a identidade confirmada pelo Google e mapeada pelo e-mail. A API nao cria administrador automaticamente.
+No login Google, a identidade confirmada pelo Google deve ter e-mail verificado e `sub` correspondente ao `googleId` previamente cadastrado no `AdminUser`. A API tambem valida se o e-mail do token bate com o e-mail autorizado. A API nao cria administrador automaticamente.
+
+Para producao com Web e API em subdominios do mesmo dominio, configure `SESSION_COOKIE_DOMAIN` de forma compativel, por exemplo `.seudominio.com.br`. Se a topologia usar dominios totalmente diferentes, a estrategia de cookie/CSRF deve ser revisada antes do deploy.
 
 ## Desenvolvimento Local
 

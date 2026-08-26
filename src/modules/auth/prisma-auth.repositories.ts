@@ -61,6 +61,13 @@ export class PrismaSessionRepository implements SessionRepository {
     await this.prisma.adminSession.update({ where: { id: sessionId }, data: { revokedAt: new Date() } });
   }
 
+  async revokeAllForAdmin(adminUserId: string) {
+    await this.prisma.adminSession.updateMany({
+      where: { adminUserId, revokedAt: null },
+      data: { revokedAt: new Date() }
+    });
+  }
+
   async touch(sessionId: string) {
     await this.prisma.adminSession.update({ where: { id: sessionId }, data: { lastSeenAt: new Date() } });
   }
@@ -75,6 +82,29 @@ export class PrismaPasswordResetRepository implements PasswordResetRepository {
 
   findByTokenHash(tokenHash: string) {
     return this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+  }
+
+  async consumeValidToken(tokenHash: string, now: Date) {
+    return this.prisma.$transaction(async (tx) => {
+      const token = await tx.passwordResetToken.findFirst({
+        where: {
+          tokenHash,
+          usedAt: null,
+          expiresAt: { gt: now }
+        }
+      });
+
+      if (!token) {
+        return null;
+      }
+
+      const result = await tx.passwordResetToken.updateMany({
+        where: { id: token.id, usedAt: null },
+        data: { usedAt: now }
+      });
+
+      return result.count === 1 ? token : null;
+    });
   }
 
   async markUsed(tokenId: string) {

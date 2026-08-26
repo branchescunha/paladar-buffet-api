@@ -103,6 +103,14 @@ export class InMemorySessionRepository implements SessionRepository {
     }
   }
 
+  async revokeAllForAdmin(adminUserId: string) {
+    this.sessions
+      .filter((session) => session.adminUserId === adminUserId && !session.revokedAt)
+      .forEach((session) => {
+        session.revokedAt = new Date();
+      });
+  }
+
   async touch(sessionId: string) {
     const session = this.sessions.find((item) => item.id === sessionId);
     if (session) {
@@ -127,6 +135,19 @@ export class InMemoryPasswordResetRepository implements PasswordResetRepository 
 
   async findByTokenHash(tokenHash: string) {
     return this.records.find((record) => record.tokenHash === tokenHash) ?? null;
+  }
+
+  async consumeValidToken(tokenHash: string, now: Date) {
+    const record = this.records.find(
+      (item) => item.tokenHash === tokenHash && !item.usedAt && item.expiresAt > now
+    );
+
+    if (!record) {
+      return null;
+    }
+
+    record.usedAt = now;
+    return record;
   }
 
   async markUsed(tokenId: string) {
@@ -154,9 +175,9 @@ export class MemoryEmailSender implements EmailSender {
 }
 
 export class StaticGoogleVerifier implements GoogleIdentityVerifier {
-  constructor(private readonly identity: { email: string; googleId: string }) {}
+  constructor(private readonly identity: { email: string; googleId: string; emailVerified?: boolean }) {}
 
   async verify() {
-    return this.identity;
+    return { ...this.identity, emailVerified: this.identity.emailVerified ?? true };
   }
 }

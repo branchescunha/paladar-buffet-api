@@ -10,6 +10,8 @@ const envSchema = z.object({
   APP_URL: z.string().url(),
   WEB_URL: z.string().url(),
   SESSION_SECRET: z.string().min(32),
+  SESSION_COOKIE_DOMAIN: z.string().optional().default(''),
+  SESSION_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   GOOGLE_CLIENT_ID: z.string().optional().default(''),
   GOOGLE_CLIENT_SECRET: z.string().optional().default(''),
   RESEND_API_KEY: z.string().optional().default(''),

@@ -53,9 +53,9 @@ export class AuthService {
   async googleLogin(input: { idToken: string } & RequestMetadata) {
     const identity = await this.deps.googleVerifier.verify(input.idToken);
     const email = normalizeEmail(identity.email);
-    const admin = await this.deps.admins.findByEmail(email);
+    const admin = await this.deps.admins.findByGoogleId(identity.googleId);
 
-    if (!admin || !admin.isActive) {
+    if (!identity.emailVerified || !admin || !admin.isActive || admin.email !== email) {
       await this.deps.audit.record({
         type: 'GOOGLE_LOGIN_DENIED',
         email,
@@ -136,15 +136,15 @@ export class AuthService {
 
   async resetPassword(input: { token: string; password: string } & RequestMetadata) {
     const parsedPassword = passwordSchema.parse(input.password);
-    const record = await this.deps.passwordResets.findByTokenHash(sha256(input.token));
+    const record = await this.deps.passwordResets.consumeValidToken(sha256(input.token), new Date());
 
-    if (!record || record.usedAt || record.expiresAt <= new Date()) {
+    if (!record) {
       throw forbiddenError();
     }
 
     const passwordHash = await argon2.hash(parsedPassword, { type: argon2.argon2id });
     await this.deps.admins.updatePassword(record.adminUserId, passwordHash);
-    await this.deps.passwordResets.markUsed(record.id);
+    await this.deps.sessions.revokeAllForAdmin(record.adminUserId);
     await this.deps.audit.record({
       type: 'PASSWORD_RESET_COMPLETED',
       adminUserId: record.adminUserId,

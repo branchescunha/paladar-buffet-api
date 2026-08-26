@@ -20,13 +20,15 @@ export class JoseGoogleIdentityVerifier implements GoogleIdentityVerifier {
 
     const email = payload.email;
     const googleId = payload.sub;
+    const emailVerified = payload.email_verified;
 
-    if (typeof email !== 'string' || typeof googleId !== 'string') {
+    if (typeof email !== 'string' || typeof googleId !== 'string' || emailVerified !== true) {
       throw new Error('Invalid Google identity token.');
     }
 
     return {
       email,
+      emailVerified,
       googleId,
       name: typeof payload.name === 'string' ? payload.name : undefined,
       avatarUrl: typeof payload.picture === 'string' ? payload.picture : undefined

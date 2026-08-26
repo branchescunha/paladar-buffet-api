@@ -12,11 +12,12 @@ import {
   makeAdmin
 } from './in-memory-auth.js';
 
-async function makeService(options: { inactive?: boolean; googleEmail?: string } = {}) {
+async function makeService(options: { inactive?: boolean; googleEmail?: string; googleId?: string; emailVerified?: boolean } = {}) {
   const passwordHash = await argon2.hash('StrongPass123', { type: argon2.argon2id });
   const admins = [
     makeAdmin({
       passwordHash,
+      googleId: 'google-1',
       isActive: !options.inactive
     })
   ];
@@ -33,7 +34,8 @@ async function makeService(options: { inactive?: boolean; googleEmail?: string }
     emailSender: email,
     googleVerifier: new StaticGoogleVerifier({
       email: options.googleEmail ?? 'admin@paladarbuffet.com.br',
-      googleId: 'google-1'
+      googleId: options.googleId ?? 'google-1',
+      emailVerified: options.emailVerified
     }),
     webUrl: 'http://localhost:5173'
   });
@@ -120,7 +122,8 @@ describe('AuthService', () => {
   });
 
   it('creates a password reset token for an active admin and consumes it once', async () => {
-    const { service, email, admins } = await makeService();
+    const { service, email, admins, sessions } = await makeService();
+    const activeLogin = await service.login({ email: 'admin@paladarbuffet.com.br', password: 'StrongPass123' });
 
     await service.requestPasswordReset({ email: 'admin@paladarbuffet.com.br' });
     const url = new URL(email.messages[0].resetUrl);
@@ -128,6 +131,8 @@ describe('AuthService', () => {
     await service.resetPassword({ token, password: 'NewStrongPass123' });
 
     expect(await argon2.verify(admins[0].passwordHash ?? '', 'NewStrongPass123')).toBe(true);
+    expect(sessions.sessions[0].revokedAt).toBeInstanceOf(Date);
+    await expect(service.currentSession(activeLogin.sessionToken)).rejects.toMatchObject({ statusCode: 401 });
     await expect(service.resetPassword({ token, password: 'NewStrongPass123' })).rejects.toMatchObject({ statusCode: 403 });
   });
 
@@ -160,6 +165,18 @@ describe('AuthService', () => {
 
   it('rejects a Google identity that is not an authorized admin', async () => {
     const { service } = await makeService({ googleEmail: 'visitor@gmail.com' });
+
+    await expect(service.googleLogin({ idToken: 'valid-google-token' })).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it('rejects a Google identity with an unknown subject', async () => {
+    const { service } = await makeService({ googleId: 'google-2' });
+
+    await expect(service.googleLogin({ idToken: 'valid-google-token' })).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it('rejects a Google identity with an unverified email', async () => {
+    const { service } = await makeService({ emailVerified: false });
 
     await expect(service.googleLogin({ idToken: 'valid-google-token' })).rejects.toMatchObject({ statusCode: 403 });
   });

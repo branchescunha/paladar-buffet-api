@@ -70,12 +70,14 @@ export interface SessionRepository {
   }): Promise<AdminSession>;
   findActiveByTokenHash(tokenHash: string, now: Date): Promise<AdminSession | null>;
   revoke(sessionId: string): Promise<void>;
+  revokeAllForAdmin(adminUserId: string): Promise<void>;
   touch(sessionId: string): Promise<void>;
 }
 
 export interface PasswordResetRepository {
   create(input: { adminUserId: string; tokenHash: string; expiresAt: Date }): Promise<void>;
   findByTokenHash(tokenHash: string): Promise<PasswordResetTokenRecord | null>;
+  consumeValidToken(tokenHash: string, now: Date): Promise<PasswordResetTokenRecord | null>;
   markUsed(tokenId: string): Promise<void>;
 }
 
@@ -93,5 +95,5 @@ export interface EmailSender {
 }
 
 export interface GoogleIdentityVerifier {
-  verify(idToken: string): Promise<{ email: string; googleId: string; name?: string; avatarUrl?: string }>;
+  verify(idToken: string): Promise<{ email: string; emailVerified: boolean; googleId: string; name?: string; avatarUrl?: string }>;
 }
