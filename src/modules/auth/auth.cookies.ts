@@ -24,6 +24,16 @@ export function setAuthCookies(response: Response, env: Env, sessionToken: strin
 }
 
 export function clearAuthCookies(response: Response, env: Env) {
-  response.clearCookie(sessionCookieName, cookieOptions(env));
-  response.clearCookie(csrfCookieName, { ...cookieOptions(env), httpOnly: false });
+  response.clearCookie(sessionCookieName, clearCookieOptions(env));
+  response.clearCookie(csrfCookieName, { ...clearCookieOptions(env), httpOnly: false });
+}
+
+function clearCookieOptions(env: Env): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.SESSION_SAME_SITE,
+    domain: env.SESSION_COOKIE_DOMAIN || undefined,
+    path: '/'
+  };
 }

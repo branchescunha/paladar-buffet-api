@@ -60,6 +60,7 @@ Crie um `.env` local com base em `.env.example`.
 Variaveis principais:
 
 - `DATABASE_URL`
+- `DIRECT_URL`
 - `APP_URL`
 - `WEB_URL`
 - `SESSION_SECRET`
@@ -98,6 +99,8 @@ Nao existe cadastro publico. Um usuario administrativo so consegue entrar se exi
 
 No login Google, a identidade confirmada pelo Google deve ter e-mail verificado e `sub` correspondente ao `googleId` previamente cadastrado no `AdminUser`. A API tambem valida se o e-mail do token bate com o e-mail autorizado. A API nao cria administrador automaticamente.
 
+Para Neon, use `DATABASE_URL` como connection string pooled para runtime quando aplicavel. Use `DIRECT_URL` com a connection string direta para Prisma Migrate, introspection e operacoes administrativas de schema. Isso evita executar migrations por um pooler.
+
 Para producao com Web e API em subdominios do mesmo dominio, configure `SESSION_COOKIE_DOMAIN` de forma compativel, por exemplo `.seudominio.com.br`. Se a topologia usar dominios totalmente diferentes, a estrategia de cookie/CSRF deve ser revisada antes do deploy.
 
 ## Desenvolvimento Local
@@ -109,3 +112,14 @@ Para producao com Web e API em subdominios do mesmo dominio, configure `SESSION_
 5. Opcionalmente, configure `DEV_ADMIN_EMAIL` e `DEV_ADMIN_PASSWORD` e rode `npm run seed`.
 
 As instrucoes acima dependem de um PostgreSQL acessivel pelo `DATABASE_URL`.
+
+## Seed de Desenvolvimento
+
+O seed nao cria conta publica. Ele apenas garante um `AdminUser` autorizado para desenvolvimento quando as variaveis abaixo estiverem configuradas:
+
+- `DEV_ADMIN_EMAIL`
+- `DEV_ADMIN_PASSWORD`
+- `DEV_ADMIN_NAME`
+- `DEV_ADMIN_GOOGLE_ID`
+
+`DEV_ADMIN_PASSWORD` e sempre armazenada como hash Argon2id. O seed usa `upsert`, portanto pode ser reexecutado com seguranca para o mesmo e-mail.

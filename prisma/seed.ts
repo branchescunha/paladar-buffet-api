@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 const email = process.env.DEV_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.DEV_ADMIN_PASSWORD;
 const name = process.env.DEV_ADMIN_NAME ?? 'Paladar Admin';
+const googleId = process.env.DEV_ADMIN_GOOGLE_ID?.trim() || null;
 
 async function main() {
   if (!email || !password) {
@@ -17,8 +18,8 @@ async function main() {
 
   await prisma.adminUser.upsert({
     where: { email },
-    update: { name, passwordHash, isActive: true },
-    create: { name, email, passwordHash, role: 'ADMIN' }
+    update: { name, passwordHash, googleId, isActive: true },
+    create: { name, email, passwordHash, googleId, role: 'ADMIN' }
   });
 
   console.info(`Development admin ensured for ${email}.`);

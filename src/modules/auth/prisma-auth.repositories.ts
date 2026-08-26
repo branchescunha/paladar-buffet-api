@@ -17,6 +17,36 @@ export class PrismaAdminRepository implements AdminRepository {
     return this.prisma.adminUser.findUnique({ where: { googleId } });
   }
 
+  async linkGoogleId(input: { adminUserId: string; email: string; googleId: string; avatarUrl?: string }) {
+    try {
+      const result = await this.prisma.adminUser.updateMany({
+        where: {
+          id: input.adminUserId,
+          email: input.email,
+          googleId: null,
+          isActive: true
+        },
+        data: {
+          googleId: input.googleId,
+          avatarUrl: input.avatarUrl,
+          version: { increment: 1 }
+        }
+      });
+
+      if (result.count !== 1) {
+        return null;
+      }
+
+      return this.prisma.adminUser.findUnique({ where: { id: input.adminUserId } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
   async updateLastLogin(adminUserId: string) {
     await this.prisma.adminUser.update({
       where: { id: adminUserId },

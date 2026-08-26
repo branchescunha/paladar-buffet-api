@@ -55,6 +55,7 @@ export interface RequestMetadata {
 export interface AdminRepository {
   findByEmail(email: string): Promise<AdminUser | null>;
   findByGoogleId(googleId: string): Promise<AdminUser | null>;
+  linkGoogleId(input: { adminUserId: string; email: string; googleId: string; avatarUrl?: string }): Promise<AdminUser | null>;
   updateLastLogin(adminUserId: string): Promise<void>;
   updatePassword(adminUserId: string, passwordHash: string): Promise<void>;
 }

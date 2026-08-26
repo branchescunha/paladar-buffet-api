@@ -53,9 +53,9 @@ export class AuthService {
   async googleLogin(input: { idToken: string } & RequestMetadata) {
     const identity = await this.deps.googleVerifier.verify(input.idToken);
     const email = normalizeEmail(identity.email);
-    const admin = await this.deps.admins.findByGoogleId(identity.googleId);
+    const admin = await this.deps.admins.findByEmail(email);
 
-    if (!identity.emailVerified || !admin || !admin.isActive || admin.email !== email) {
+    if (!identity.emailVerified || !admin || !admin.isActive) {
       await this.deps.audit.record({
         type: 'GOOGLE_LOGIN_DENIED',
         email,
@@ -65,11 +65,39 @@ export class AuthService {
       throw forbiddenError();
     }
 
-    const session = await this.createSession(admin.id, input);
-    await this.deps.admins.updateLastLogin(admin.id);
-    await this.deps.audit.record({ type: 'GOOGLE_LOGIN_SUCCESS', adminUserId: admin.id, email, ...this.metadata(input) });
+    const authorizedAdmin =
+      admin.googleId === identity.googleId
+        ? admin
+        : admin.googleId
+          ? null
+          : await this.deps.admins.linkGoogleId({
+              adminUserId: admin.id,
+              email,
+              googleId: identity.googleId,
+              avatarUrl: identity.avatarUrl
+            });
 
-    return { admin: this.publicAdmin(admin), ...session };
+    if (!authorizedAdmin) {
+      await this.deps.audit.record({
+        type: 'GOOGLE_LOGIN_DENIED',
+        adminUserId: admin.id,
+        email,
+        metadata: { googleId: identity.googleId },
+        ...this.metadata(input)
+      });
+      throw forbiddenError();
+    }
+
+    const session = await this.createSession(authorizedAdmin.id, input);
+    await this.deps.admins.updateLastLogin(authorizedAdmin.id);
+    await this.deps.audit.record({
+      type: 'GOOGLE_LOGIN_SUCCESS',
+      adminUserId: authorizedAdmin.id,
+      email,
+      ...this.metadata(input)
+    });
+
+    return { admin: this.publicAdmin(authorizedAdmin), ...session };
   }
 
   async currentSession(sessionToken: string | undefined) {

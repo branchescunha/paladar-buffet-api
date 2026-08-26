@@ -16,7 +16,12 @@ export function createApp() {
   app.use(requestId);
   app.use(
     pinoHttp({
-      redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]']
+      redact: [
+        'req.headers.cookie',
+        'req.headers.authorization',
+        'req.headers["x-csrf-token"]',
+        'res.headers["set-cookie"]'
+      ]
     })
   );
   app.use(helmet());

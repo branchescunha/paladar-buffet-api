@@ -12,12 +12,20 @@ import {
   makeAdmin
 } from './in-memory-auth.js';
 
-async function makeService(options: { inactive?: boolean; googleEmail?: string; googleId?: string; emailVerified?: boolean } = {}) {
+async function makeService(
+  options: {
+    inactive?: boolean;
+    googleEmail?: string;
+    googleId?: string;
+    adminGoogleId?: string | null;
+    emailVerified?: boolean;
+  } = {}
+) {
   const passwordHash = await argon2.hash('StrongPass123', { type: argon2.argon2id });
   const admins = [
     makeAdmin({
       passwordHash,
-      googleId: 'google-1',
+      googleId: options.adminGoogleId === undefined ? 'google-1' : options.adminGoogleId,
       isActive: !options.inactive
     })
   ];
@@ -161,6 +169,21 @@ describe('AuthService', () => {
     const result = await service.googleLogin({ idToken: 'valid-google-token' });
 
     expect(result.admin.email).toBe('admin@paladarbuffet.com.br');
+  });
+
+  it('links the Google subject to a previously authorized active admin on first Google login', async () => {
+    const { service, admins } = await makeService({ adminGoogleId: null });
+
+    const result = await service.googleLogin({ idToken: 'valid-google-token' });
+
+    expect(result.admin.email).toBe('admin@paladarbuffet.com.br');
+    expect(admins[0].googleId).toBe('google-1');
+  });
+
+  it('rejects Google login when the authorized admin is linked to another subject', async () => {
+    const { service } = await makeService({ adminGoogleId: 'google-existing', googleId: 'google-1' });
+
+    await expect(service.googleLogin({ idToken: 'valid-google-token' })).rejects.toMatchObject({ statusCode: 403 });
   });
 
   it('rejects a Google identity that is not an authorized admin', async () => {

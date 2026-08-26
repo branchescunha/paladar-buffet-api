@@ -41,6 +41,21 @@ export class InMemoryAdminRepository implements AdminRepository {
     return this.admins.find((admin) => admin.googleId === googleId) ?? null;
   }
 
+  async linkGoogleId(input: { adminUserId: string; email: string; googleId: string; avatarUrl?: string }) {
+    const admin = this.admins.find(
+      (item) => item.id === input.adminUserId && item.email === input.email && item.isActive && !item.googleId
+    );
+
+    if (!admin || this.admins.some((item) => item.googleId === input.googleId)) {
+      return null;
+    }
+
+    admin.googleId = input.googleId;
+    admin.avatarUrl = input.avatarUrl ?? admin.avatarUrl;
+    admin.version += 1;
+    return admin;
+  }
+
   async updateLastLogin(adminUserId: string) {
     const admin = this.admins.find((item) => item.id === adminUserId);
     if (admin) {
