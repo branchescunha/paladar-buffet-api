@@ -57,7 +57,7 @@ export function authRoutes(authService: AuthService) {
 
   router.post(
     '/logout',
-    csrfProtection,
+    csrfProtection(authService),
     asyncHandler(async (request, response) => {
       await authService.logout(request.cookies[sessionCookieName], {
         ipAddress: request.ip,

@@ -103,6 +103,14 @@ describe('AuthService', () => {
     await expect(service.currentSession(login.sessionToken)).rejects.toMatchObject({ statusCode: 401 });
   });
 
+  it('validates csrf tokens against the persisted session hash', async () => {
+    const { service } = await makeService();
+    const login = await service.login({ email: 'admin@paladarbuffet.com.br', password: 'StrongPass123' });
+
+    await expect(service.validateCsrf(login.sessionToken, login.csrfToken)).resolves.toBeUndefined();
+    await expect(service.validateCsrf(login.sessionToken, 'wrong-csrf-token')).rejects.toMatchObject({ statusCode: 403 });
+  });
+
   it('does not enumerate users when requesting password recovery', async () => {
     const { service, email } = await makeService();
 

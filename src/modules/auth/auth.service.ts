@@ -100,6 +100,18 @@ export class AuthService {
     }
   }
 
+  async validateCsrf(sessionToken: string | undefined, csrfToken: string | undefined) {
+    if (!sessionToken || !csrfToken) {
+      throw forbiddenError();
+    }
+
+    const session = await this.deps.sessions.findActiveByTokenHash(sha256(sessionToken), new Date());
+
+    if (!session || session.csrfTokenHash !== sha256(csrfToken)) {
+      throw forbiddenError();
+    }
+  }
+
   async requestPasswordReset(input: { email: string } & RequestMetadata) {
     const email = normalizeEmail(input.email);
     const admin = await this.deps.admins.findByEmail(email);
