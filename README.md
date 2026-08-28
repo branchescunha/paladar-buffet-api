@@ -32,6 +32,8 @@ API administrativa do Paladar Buffet. Este projeto entrega a fundacao backend da
 - Auditoria minima de eventos de autenticacao
 - Prisma schema e migration inicial
 - Seed seguro para desenvolvimento
+- Recebimento publico de solicitacoes de orcamento em `POST /quote-requests`
+- Validacao, rate limit e honeypot para solicitacoes publicas
 
 ## Estrutura
 
@@ -42,6 +44,7 @@ src/
   middlewares/
   modules/
     auth/
+    quote-requests/
   shared/
   types/
   app.ts
@@ -122,4 +125,22 @@ O seed nao cria conta publica. Ele apenas garante um `AdminUser` autorizado para
 - `DEV_ADMIN_NAME`
 - `DEV_ADMIN_GOOGLE_ID`
 
-`DEV_ADMIN_PASSWORD` e sempre armazenada como hash Argon2id. O seed usa `upsert`, portanto pode ser reexecutado com seguranca para o mesmo e-mail.
+`DEV_ADMIN_PASSWORD` e sempre armazenada como hash Argon2id. O seed usa `upsert`, portanto pode ser reexecutado com seguranca para o mesmo e-mail. O campo `googleId` so e alterado quando `DEV_ADMIN_GOOGLE_ID` estiver preenchido, evitando apagar uma vinculacao Google existente.
+
+## Orcamentos Publicos
+
+`POST /quote-requests` recebe solicitacoes do formulario publico do site. A rota nao cria usuario, nao autentica visitante e retorna apenas um recibo com `id` e `createdAt`.
+
+Campos principais:
+
+- nome
+- telefone
+- e-mail opcional
+- tipo de evento
+- data prevista opcional
+- quantidade de convidados
+- localidade opcional
+- observacoes e preferencias
+- aceite da politica de privacidade
+
+O campo honeypot `website` e aceito apenas como controle anti-spam e nao e persistido.

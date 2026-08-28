@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import argon2 from 'argon2';
 import { PrismaClient } from '@prisma/client';
 
@@ -6,7 +7,7 @@ const prisma = new PrismaClient();
 const email = process.env.DEV_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.DEV_ADMIN_PASSWORD;
 const name = process.env.DEV_ADMIN_NAME ?? 'Paladar Admin';
-const googleId = process.env.DEV_ADMIN_GOOGLE_ID?.trim() || null;
+const googleId = process.env.DEV_ADMIN_GOOGLE_ID?.trim();
 
 async function main() {
   if (!email || !password) {
@@ -18,8 +19,8 @@ async function main() {
 
   await prisma.adminUser.upsert({
     where: { email },
-    update: { name, passwordHash, googleId, isActive: true },
-    create: { name, email, passwordHash, googleId, role: 'ADMIN' }
+    update: { name, passwordHash, ...(googleId ? { googleId } : {}), isActive: true },
+    create: { name, email, passwordHash, googleId: googleId || null, role: 'ADMIN' }
   });
 
   console.info(`Development admin ensured for ${email}.`);

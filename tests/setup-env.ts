@@ -1,4 +1,6 @@
-process.env.NODE_ENV ??= 'test';
+import 'dotenv/config';
+
+process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL ??= 'postgresql://postgres:postgres@localhost:5432/test';
 process.env.DIRECT_URL ??= process.env.DATABASE_URL;
 process.env.APP_URL ??= 'http://localhost:3333';
