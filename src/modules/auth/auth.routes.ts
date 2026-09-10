@@ -3,7 +3,13 @@ import rateLimit from 'express-rate-limit';
 import { env } from '../../config/env.js';
 import { asyncHandler } from '../../shared/async-handler.js';
 import { clearAuthCookies, sessionCookieName, setAuthCookies } from './auth.cookies.js';
-import { forgotPasswordSchema, googleLoginSchema, loginSchema, resetPasswordSchema } from './auth.schemas.js';
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  googleLoginSchema,
+  loginSchema,
+  resetPasswordSchema
+} from './auth.schemas.js';
 import { csrfProtection, requireAdmin, requireAuth } from './auth.middleware.js';
 import type { AuthService } from './auth.service.js';
 
@@ -16,6 +22,23 @@ const authLimiter = rateLimit({
 
 export function authRoutes(authService: AuthService) {
   const router = Router();
+
+  router.post(
+    '/change-password',
+    requireAuth(authService),
+    csrfProtection(authService),
+    asyncHandler(async (request, response) => {
+      const body = changePasswordSchema.parse(request.body);
+      await authService.changePassword({
+        ...body,
+        sessionToken: request.cookies[sessionCookieName],
+        ipAddress: request.ip,
+        userAgent: request.header('user-agent')
+      });
+      clearAuthCookies(response, env);
+      response.status(204).send();
+    })
+  );
 
   router.post(
     '/login',
@@ -79,7 +102,7 @@ export function authRoutes(authService: AuthService) {
         userAgent: request.header('user-agent')
       });
       response.json({
-        message: 'Se o e-mail estiver autorizado, enviaremos as instrucoes de recuperacao.'
+        message: 'Se o e-mail estiver autorizado, enviaremos as instruções de recuperação.'
       });
     })
   );
@@ -98,9 +121,14 @@ export function authRoutes(authService: AuthService) {
     })
   );
 
-  router.get('/admin/session-check', requireAuth(authService), requireAdmin, (_request, response) => {
-    response.json({ ok: true });
-  });
+  router.get(
+    '/admin/session-check',
+    requireAuth(authService),
+    requireAdmin,
+    (_request, response) => {
+      response.json({ ok: true });
+    }
+  );
 
   return router;
 }

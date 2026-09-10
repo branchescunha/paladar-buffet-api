@@ -21,6 +21,7 @@ describe.runIf(runRealDbTests)('real database quote requests', () => {
       phone: '(61) 98416-3455',
       eventType: 'casamento',
       eventDate: '2099-09-20',
+      eventTime: '19:30',
       guestCount: 120,
       location: 'Brasilia-DF',
       message: 'Solicitacao real de teste automatizado.',
@@ -36,6 +37,7 @@ describe.runIf(runRealDbTests)('real database quote requests', () => {
     const saved = await prisma.quoteRequest.findUniqueOrThrow({ where: { id: response.body.id as string } });
     expect(saved.email).toBe(testEmail);
     expect(saved.phone).toBe('61984163455');
+    expect(saved.eventTime).toBe('19:30');
     expect(saved.acceptedPrivacy).toBe(true);
   });
 });

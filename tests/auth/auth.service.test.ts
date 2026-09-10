@@ -19,6 +19,8 @@ async function makeService(
     googleId?: string;
     adminGoogleId?: string | null;
     emailVerified?: boolean;
+    mustChangePassword?: boolean;
+    role?: 'OWNER' | 'ADMIN';
   } = {}
 ) {
   const passwordHash = await argon2.hash('StrongPass123', { type: argon2.argon2id });
@@ -26,7 +28,9 @@ async function makeService(
     makeAdmin({
       passwordHash,
       googleId: options.adminGoogleId === undefined ? 'google-1' : options.adminGoogleId,
-      isActive: !options.inactive
+      isActive: !options.inactive,
+      mustChangePassword: options.mustChangePassword ?? false,
+      role: options.role ?? 'ADMIN'
     })
   ];
   const adminRepo = new InMemoryAdminRepository(admins);
@@ -63,6 +67,15 @@ describe('AuthService', () => {
     expect(result.admin.email).toBe('admin@paladarbuffet.com.br');
     expect(result.sessionToken).toHaveLength(64);
     expect(sessions.sessions).toHaveLength(1);
+    expect(result.admin.mustChangePassword).toBe(false);
+  });
+
+  it('keeps the initial password change requirement after password login', async () => {
+    const { service } = await makeService({ mustChangePassword: true });
+
+    const result = await service.login({ email: 'admin@paladarbuffet.com.br', password: 'StrongPass123' });
+
+    expect(result.admin.mustChangePassword).toBe(true);
   });
 
   it('uses the same error for an unknown user and a wrong password', async () => {
@@ -94,6 +107,14 @@ describe('AuthService', () => {
       admin: { email: 'admin@paladarbuffet.com.br' }
     });
     await expect(service.currentSession('invalid-token')).rejects.toMatchObject({ statusCode: 401 });
+  });
+
+  it('rejects a previously valid session after its admin is deactivated', async () => {
+    const { service, admins } = await makeService();
+    const login = await service.login({ email: 'admin@paladarbuffet.com.br', password: 'StrongPass123' });
+    admins[0].isActive = false;
+
+    await expect(service.currentSession(login.sessionToken)).rejects.toMatchObject({ statusCode: 401 });
   });
 
   it('rejects an expired session', async () => {
@@ -139,9 +160,38 @@ describe('AuthService', () => {
     await service.resetPassword({ token, password: 'NewStrongPass123' });
 
     expect(await argon2.verify(admins[0].passwordHash ?? '', 'NewStrongPass123')).toBe(true);
+    expect(admins[0].mustChangePassword).toBe(false);
     expect(sessions.sessions[0].revokedAt).toBeInstanceOf(Date);
     await expect(service.currentSession(activeLogin.sessionToken)).rejects.toMatchObject({ statusCode: 401 });
     await expect(service.resetPassword({ token, password: 'NewStrongPass123' })).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it('changes the password with the current password and revokes active sessions', async () => {
+    const { service, admins, sessions } = await makeService({ mustChangePassword: true });
+    const login = await service.login({ email: 'admin@paladarbuffet.com.br', password: 'StrongPass123' });
+
+    await service.changePassword({
+      sessionToken: login.sessionToken,
+      currentPassword: 'StrongPass123',
+      newPassword: 'ChangedPass123'
+    });
+
+    expect(await argon2.verify(admins[0].passwordHash ?? '', 'ChangedPass123')).toBe(true);
+    expect(admins[0].mustChangePassword).toBe(false);
+    expect(sessions.sessions[0].revokedAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects password change when the current password is invalid', async () => {
+    const { service } = await makeService({ mustChangePassword: true });
+    const login = await service.login({ email: 'admin@paladarbuffet.com.br', password: 'StrongPass123' });
+
+    await expect(
+      service.changePassword({
+        sessionToken: login.sessionToken,
+        currentPassword: 'WrongPass123',
+        newPassword: 'ChangedPass123'
+      })
+    ).rejects.toMatchObject({ statusCode: 401, code: 'INVALID_CREDENTIALS' });
   });
 
   it('rejects invalid and expired password reset tokens', async () => {
@@ -169,6 +219,14 @@ describe('AuthService', () => {
     const result = await service.googleLogin({ idToken: 'valid-google-token' });
 
     expect(result.admin.email).toBe('admin@paladarbuffet.com.br');
+  });
+
+  it('keeps the initial password change requirement after Google login', async () => {
+    const { service } = await makeService({ mustChangePassword: true });
+
+    const result = await service.googleLogin({ idToken: 'valid-google-token' });
+
+    expect(result.admin.mustChangePassword).toBe(true);
   });
 
   it('links the Google subject to a previously authorized active admin on first Google login', async () => {

@@ -41,7 +41,8 @@ describe.runIf(runRealDbTests)('real database admin authentication', () => {
         email: adminEmail,
         passwordHash: await argon2.hash(initialPassword, { type: argon2.argon2id }),
         role: 'ADMIN',
-        isActive: true
+        isActive: true,
+        mustChangePassword: false
       }
     });
   });
@@ -118,5 +119,50 @@ describe.runIf(runRealDbTests)('real database admin authentication', () => {
     });
     expect(usedTokenRecord.usedAt).toBeInstanceOf(Date);
     await expect(service.currentSession(login.sessionToken)).rejects.toMatchObject({ statusCode: 401 });
+  });
+
+  it('requires and completes the initial password change through HTTP', async () => {
+    await prisma.adminUser.update({
+      where: { email: adminEmail },
+      data: {
+        passwordHash: await argon2.hash(initialPassword, { type: argon2.argon2id }),
+        mustChangePassword: true
+      }
+    });
+    const app = createApp();
+    const loginResponse = await request(app).post('/auth/login').send({
+      email: adminEmail,
+      password: initialPassword
+    });
+    expect(loginResponse.status).toBe(200);
+    expect(loginResponse.body.admin.mustChangePassword).toBe(true);
+
+    const cookies = loginResponse.headers['set-cookie'] as unknown as string[];
+    const csrfCookie = cookies.find((cookie) => cookie.startsWith('paladar_csrf='));
+    const csrfToken = decodeURIComponent(csrfCookie?.match(/^paladar_csrf=([^;]+)/)?.[1] ?? '');
+
+    const blockedResponse = await request(app).get('/auth/admin/session-check').set('Cookie', cookies);
+    expect(blockedResponse.status).toBe(403);
+    expect(blockedResponse.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED');
+
+    const changeResponse = await request(app)
+      .post('/auth/change-password')
+      .set('Cookie', cookies)
+      .set('x-csrf-token', csrfToken)
+      .send({ currentPassword: initialPassword, newPassword: resetPassword });
+    expect(changeResponse.status).toBe(204);
+
+    const updatedAdmin = await prisma.adminUser.findUniqueOrThrow({ where: { email: adminEmail } });
+    expect(updatedAdmin.mustChangePassword).toBe(false);
+    expect(await argon2.verify(updatedAdmin.passwordHash ?? '', resetPassword)).toBe(true);
+    const revokedSessionResponse = await request(app).get('/auth/me').set('Cookie', cookies);
+    expect(revokedSessionResponse.status).toBe(401);
+
+    const secondLogin = await request(app).post('/auth/login').send({
+      email: adminEmail,
+      password: resetPassword
+    });
+    expect(secondLogin.status).toBe(200);
+    expect(secondLogin.body.admin.mustChangePassword).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { forbiddenError, unauthorizedError } from '../../shared/errors.js';
+import { forbiddenError, passwordChangeRequiredError, unauthorizedError } from '../../shared/errors.js';
 import { csrfCookieName, sessionCookieName } from './auth.cookies.js';
 import type { AuthService } from './auth.service.js';
 
@@ -47,8 +47,32 @@ export function requireAdmin(request: Request, _response: Response, next: NextFu
     return;
   }
 
-  if (request.admin.role !== 'ADMIN') {
+  if (request.admin.role !== 'ADMIN' && request.admin.role !== 'OWNER') {
     next(forbiddenError());
+    return;
+  }
+
+  if (request.admin.mustChangePassword) {
+    next(passwordChangeRequiredError());
+    return;
+  }
+
+  next();
+}
+
+export function requireOwner(request: Request, _response: Response, next: NextFunction) {
+  if (!request.admin) {
+    next(unauthorizedError());
+    return;
+  }
+
+  if (request.admin.role !== 'OWNER') {
+    next(forbiddenError());
+    return;
+  }
+
+  if (request.admin.mustChangePassword) {
+    next(passwordChangeRequiredError());
     return;
   }
 

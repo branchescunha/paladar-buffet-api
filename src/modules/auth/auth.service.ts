@@ -171,11 +171,35 @@ export class AuthService {
     }
 
     const passwordHash = await argon2.hash(parsedPassword, { type: argon2.argon2id });
-    await this.deps.admins.updatePassword(record.adminUserId, passwordHash);
+    await this.deps.admins.updatePassword(record.adminUserId, passwordHash, false);
     await this.deps.sessions.revokeAllForAdmin(record.adminUserId);
     await this.deps.audit.record({
       type: 'PASSWORD_RESET_COMPLETED',
       adminUserId: record.adminUserId,
+      ...this.metadata(input)
+    });
+  }
+
+  async changePassword(input: {
+    sessionToken: string | undefined;
+    currentPassword: string;
+    newPassword: string;
+  } & RequestMetadata) {
+    const newPassword = passwordSchema.parse(input.newPassword);
+    const { admin: publicAdmin } = await this.currentSession(input.sessionToken);
+    const admin = await this.deps.admins.findById(publicAdmin.id);
+
+    if (!admin?.passwordHash || !(await argon2.verify(admin.passwordHash, input.currentPassword))) {
+      throw invalidCredentialsError();
+    }
+
+    const passwordHash = await argon2.hash(newPassword, { type: argon2.argon2id });
+    await this.deps.admins.updatePassword(admin.id, passwordHash, false);
+    await this.deps.sessions.revokeAllForAdmin(admin.id);
+    await this.deps.audit.record({
+      type: 'PASSWORD_CHANGED',
+      adminUserId: admin.id,
+      email: admin.email,
       ...this.metadata(input)
     });
   }
@@ -205,7 +229,8 @@ export class AuthService {
       name: admin.name,
       email: admin.email,
       role: admin.role,
-      avatarUrl: admin.avatarUrl
+      avatarUrl: admin.avatarUrl,
+      mustChangePassword: admin.mustChangePassword
     };
   }
 

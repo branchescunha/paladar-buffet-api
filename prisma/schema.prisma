@@ -9,7 +9,32 @@ datasource db {
 }
 
 enum AdminRole {
+  OWNER
   ADMIN
+}
+
+enum QuoteRequestStatus {
+  NOVA
+  EM_ANALISE
+  PROPOSTA_ENVIADA
+  APROVADA
+  RECUSADA
+  CANCELADA
+}
+
+enum EventStatus {
+  PLANEJAMENTO
+  CONFIRMADO
+  CONCLUIDO
+  CANCELADO
+}
+
+enum ProposalStatus {
+  RASCUNHO
+  ENVIADA
+  APROVADA
+  RECUSADA
+  CANCELADA
 }
 
 enum AuthEventType {
@@ -18,23 +43,25 @@ enum AuthEventType {
   LOGOUT
   PASSWORD_RESET_REQUESTED
   PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
   GOOGLE_LOGIN_SUCCESS
   GOOGLE_LOGIN_DENIED
 }
 
 model AdminUser {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  passwordHash String?
-  googleId     String?   @unique
-  avatarUrl    String?
-  role         AdminRole @default(ADMIN)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastLoginAt  DateTime?
-  version      Int       @default(1)
+  id                 String    @id @default(cuid())
+  name               String
+  email              String    @unique
+  passwordHash       String?
+  googleId           String?   @unique
+  avatarUrl          String?
+  role               AdminRole @default(ADMIN)
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  lastLoginAt        DateTime?
+  version            Int       @default(1)
 
   sessions            AdminSession[]
   passwordResetTokens PasswordResetToken[]
@@ -101,6 +128,7 @@ model QuoteRequest {
   eventType           String
   eventTypeOther      String?
   eventDate           DateTime?
+  eventTime           String?
   guestCount          Int
   location            String?
   message             String?
@@ -110,9 +138,102 @@ model QuoteRequest {
   dietaryRestrictions String?
   acceptedPrivacy     Boolean
   source              String   @default("public_site")
+  status              QuoteRequestStatus @default(NOVA)
+  customerId          String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  customer            Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  event               Event?
+  proposals           Proposal[]
+
   @@index([createdAt])
   @@index([eventType])
+  @@index([status])
+  @@index([customerId])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quoteRequests QuoteRequest[]
+  events        Event[]
+  proposals     Proposal[]
+
+  @@unique([email, phone])
+  @@index([name])
+  @@index([phone])
+}
+
+model Event {
+  id             String      @id @default(cuid())
+  customerId     String
+  quoteRequestId String?     @unique
+  eventType      String
+  eventDate      DateTime
+  eventTime      String
+  location       String
+  guestCount     Int
+  notes          String?
+  status         EventStatus @default(PLANEJAMENTO)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  quoteRequest QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  proposals    Proposal[]
+
+  @@index([customerId])
+  @@index([eventDate])
+  @@index([status])
+}
+
+model Proposal {
+  id              String         @id @default(cuid())
+  customerId      String
+  eventId         String?
+  quoteRequestId  String?
+  description     String?
+  notes           String?
+  validUntil      DateTime
+  status          ProposalStatus @default(RASCUNHO)
+  subtotalCents   Int            @default(0)
+  adjustmentCents Int            @default(0)
+  totalCents      Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  customer     Customer     @relation(fields: [customerId], references: [id])
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  quoteRequest QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  items        ProposalItem[]
+
+  @@index([customerId])
+  @@index([eventId])
+  @@index([quoteRequestId])
+  @@index([status])
+  @@index([validUntil])
+}
+
+model ProposalItem {
+  id               String   @id @default(cuid())
+  proposalId       String
+  description      String
+  quantity         Int
+  unitPriceCents   Int
+  subtotalCents    Int
+  position         Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, position])
+  @@index([proposalId])
 }

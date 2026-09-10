@@ -4,7 +4,7 @@ import { ApiError } from '../shared/errors.js';
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
   if (error instanceof ZodError) {
-    response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Dados invalidos.' } });
+    response.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Dados inválidos.' } });
     return;
   }
 

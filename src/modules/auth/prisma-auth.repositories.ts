@@ -17,6 +17,10 @@ export class PrismaAdminRepository implements AdminRepository {
     return this.prisma.adminUser.findUnique({ where: { googleId } });
   }
 
+  findById(adminUserId: string) {
+    return this.prisma.adminUser.findUnique({ where: { id: adminUserId } });
+  }
+
   async linkGoogleId(input: { adminUserId: string; email: string; googleId: string; avatarUrl?: string }) {
     try {
       const result = await this.prisma.adminUser.updateMany({
@@ -54,10 +58,10 @@ export class PrismaAdminRepository implements AdminRepository {
     });
   }
 
-  async updatePassword(adminUserId: string, passwordHash: string) {
+  async updatePassword(adminUserId: string, passwordHash: string, mustChangePassword: boolean) {
     await this.prisma.adminUser.update({
       where: { id: adminUserId },
-      data: { passwordHash, version: { increment: 1 } }
+      data: { passwordHash, mustChangePassword, version: { increment: 1 } }
     });
   }
 }

@@ -18,3 +18,8 @@ export const resetPasswordSchema = z.object({
 export const googleLoginSchema = z.object({
   idToken: z.string().min(20)
 });
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: passwordSchema
+});

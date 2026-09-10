@@ -1,4 +1,4 @@
-export type AdminRole = 'ADMIN';
+export type AdminRole = 'OWNER' | 'ADMIN';
 
 export type AuthEventType =
   | 'LOGIN_SUCCESS'
@@ -6,6 +6,7 @@ export type AuthEventType =
   | 'LOGOUT'
   | 'PASSWORD_RESET_REQUESTED'
   | 'PASSWORD_RESET_COMPLETED'
+  | 'PASSWORD_CHANGED'
   | 'GOOGLE_LOGIN_SUCCESS'
   | 'GOOGLE_LOGIN_DENIED';
 
@@ -18,6 +19,7 @@ export interface AdminUser {
   avatarUrl: string | null;
   role: AdminRole;
   isActive: boolean;
+  mustChangePassword: boolean;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date | null;
@@ -55,9 +57,10 @@ export interface RequestMetadata {
 export interface AdminRepository {
   findByEmail(email: string): Promise<AdminUser | null>;
   findByGoogleId(googleId: string): Promise<AdminUser | null>;
+  findById(adminUserId: string): Promise<AdminUser | null>;
   linkGoogleId(input: { adminUserId: string; email: string; googleId: string; avatarUrl?: string }): Promise<AdminUser | null>;
   updateLastLogin(adminUserId: string): Promise<void>;
-  updatePassword(adminUserId: string, passwordHash: string): Promise<void>;
+  updatePassword(adminUserId: string, passwordHash: string, mustChangePassword: boolean): Promise<void>;
 }
 
 export interface SessionRepository {

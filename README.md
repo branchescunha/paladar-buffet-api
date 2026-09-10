@@ -1,6 +1,6 @@
 # Paladar Buffet API
 
-API administrativa do Paladar Buffet. Este projeto entrega a fundacao backend da versao 1.0.0, com autenticacao administrativa, sessoes, recuperacao de senha, Google Login configuravel, Prisma e PostgreSQL.
+API administrativa do Paladar Buffet. Este projeto entrega a fundação backend da versão 1.0.0, com autenticação administrativa, sessões, recuperação de senha, Google Login configurável, Prisma e PostgreSQL.
 
 ## Stack
 
@@ -19,21 +19,21 @@ API administrativa do Paladar Buffet. Este projeto entrega a fundacao backend da
 ## Funcionalidades
 
 - Healthcheck seguro em `GET /health`
-- Validacao de environment com Zod
+- Validação de environment com Zod
 - Login administrativo por e-mail e senha
 - Google Login para administradores previamente autorizados
-- Logout com revogacao de sessao
-- Consulta da sessao atual
-- Recuperacao e redefinicao de senha
-- Sessao via cookie HttpOnly
+- Logout com revogação de sessão
+- Consulta da sessão atual
+- Recuperação e redefinição de senha
+- Sessão via cookie HttpOnly
 - CSRF por token pareado em cookie/header
-- Rate limiting em rotas sensiveis de autenticacao
+- Rate limiting em rotas sensíveis de autenticação
 - Helmet, CORS restrito e limite de payload
-- Auditoria minima de eventos de autenticacao
+- Auditoria mínima de eventos de autenticação
 - Prisma schema e migration inicial
 - Seed seguro para desenvolvimento
-- Recebimento publico de solicitacoes de orcamento em `POST /quote-requests`
-- Validacao, rate limit e honeypot para solicitacoes publicas
+- Recebimento público de solicitações de orçamento em `POST /quote-requests`
+- Validação, rate limit e honeypot para solicitações públicas
 
 ## Estrutura
 
@@ -60,7 +60,7 @@ tests/
 
 Crie um `.env` local com base em `.env.example`.
 
-Variaveis principais:
+Variáveis principais:
 
 - `DATABASE_URL`
 - `DIRECT_URL`
@@ -77,11 +77,9 @@ Variaveis principais:
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 
-Para seed local opcional:
+Para provisionamento administrativo:
 
-- `DEV_ADMIN_EMAIL`
-- `DEV_ADMIN_PASSWORD`
-- `DEV_ADMIN_NAME`
+- `ADMIN_INITIAL_PASSWORD`
 
 ## Scripts
 
@@ -96,40 +94,33 @@ Para seed local opcional:
 - `npm run prisma:deploy`
 - `npm run seed`
 
-## Autenticacao
+## Autenticação
 
-Nao existe cadastro publico. Um usuario administrativo so consegue entrar se existir previamente em `AdminUser`, estiver ativo e tiver role `ADMIN`.
+Não existe cadastro público. Um usuário administrativo só consegue entrar se existir previamente em `AdminUser`, estiver ativo e tiver role `OWNER` ou `ADMIN`.
 
-No login Google, a identidade confirmada pelo Google deve ter e-mail verificado e `sub` correspondente ao `googleId` previamente cadastrado no `AdminUser`. A API tambem valida se o e-mail do token bate com o e-mail autorizado. A API nao cria administrador automaticamente.
+No login Google, a identidade confirmada pelo Google deve ter e-mail verificado e `sub` correspondente ao `googleId` previamente cadastrado no `AdminUser`. A API também valida se o e-mail do token bate com o e-mail autorizado. A API não cria administrador automaticamente.
 
-Para Neon, use `DATABASE_URL` como connection string pooled para runtime quando aplicavel. Use `DIRECT_URL` com a connection string direta para Prisma Migrate, introspection e operacoes administrativas de schema. Isso evita executar migrations por um pooler.
+Para Neon, use `DATABASE_URL` como connection string pooled para runtime quando aplicável. Use `DIRECT_URL` com a connection string direta para Prisma Migrate, introspection e operações administrativas de schema. Isso evita executar migrations por um pooler.
 
-Para producao com Web e API em subdominios do mesmo dominio, configure `SESSION_COOKIE_DOMAIN` de forma compativel, por exemplo `.seudominio.com.br`. Se a topologia usar dominios totalmente diferentes, a estrategia de cookie/CSRF deve ser revisada antes do deploy.
+Para produção com Web e API em subdomínios do mesmo domínio, configure `SESSION_COOKIE_DOMAIN` de forma compatível, por exemplo `.seudominio.com.br`. Se a topologia usar domínios totalmente diferentes, a estratégia de cookie/CSRF deve ser revisada antes do deploy.
 
 ## Desenvolvimento Local
 
-1. Instale as dependencias com `npm install`.
+1. Instale as dependências com `npm install`.
 2. Configure `.env` usando `.env.example`.
 3. Execute `npm run prisma:generate`.
 4. Execute as migrations com `npm run prisma:migrate`.
-5. Opcionalmente, configure `DEV_ADMIN_EMAIL` e `DEV_ADMIN_PASSWORD` e rode `npm run seed`.
+5. Configure `ADMIN_INITIAL_PASSWORD` com uma senha compatível com a política e rode `npm run seed` para provisionar os usuários oficiais.
 
-As instrucoes acima dependem de um PostgreSQL acessivel pelo `DATABASE_URL`.
+As instruções acima dependem de um PostgreSQL acessível pelo `DATABASE_URL`.
 
-## Seed de Desenvolvimento
+## Provisionamento Administrativo
 
-O seed nao cria conta publica. Ele apenas garante um `AdminUser` autorizado para desenvolvimento quando as variaveis abaixo estiverem configuradas:
+O seed não cria conta pública. Ele provisiona somente os sete e-mails oficiais definidos no código, usando `ADMIN_INITIAL_PASSWORD`, armazenada como hash Argon2id individual. O provisionamento pode ser reexecutado: preserva `googleId` e não sobrescreve a senha pessoal depois que `mustChangePassword` se torna `false`.
 
-- `DEV_ADMIN_EMAIL`
-- `DEV_ADMIN_PASSWORD`
-- `DEV_ADMIN_NAME`
-- `DEV_ADMIN_GOOGLE_ID`
+## Orçamentos Públicos
 
-`DEV_ADMIN_PASSWORD` e sempre armazenada como hash Argon2id. O seed usa `upsert`, portanto pode ser reexecutado com seguranca para o mesmo e-mail. O campo `googleId` so e alterado quando `DEV_ADMIN_GOOGLE_ID` estiver preenchido, evitando apagar uma vinculacao Google existente.
-
-## Orcamentos Publicos
-
-`POST /quote-requests` recebe solicitacoes do formulario publico do site. A rota nao cria usuario, nao autentica visitante e retorna apenas um recibo com `id` e `createdAt`.
+`POST /quote-requests` recebe solicitações do formulário público do site. A rota não cria usuário, não autentica visitante e retorna apenas um recibo com `id` e `createdAt`.
 
 Campos principais:
 
@@ -138,9 +129,10 @@ Campos principais:
 - e-mail opcional
 - tipo de evento
 - data prevista opcional
+- horário previsto obrigatório
 - quantidade de convidados
 - localidade opcional
-- observacoes e preferencias
-- aceite da politica de privacidade
+- observações e preferências
+- aceite da política de privacidade
 
-O campo honeypot `website` e aceito apenas como controle anti-spam e nao e persistido.
+O campo honeypot `website` é aceito apenas como controle anti-spam e não é persistido.

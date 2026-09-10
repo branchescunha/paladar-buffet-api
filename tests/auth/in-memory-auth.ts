@@ -22,6 +22,7 @@ export function makeAdmin(overrides: Partial<AdminUser> = {}): AdminUser {
     avatarUrl: null,
     role: 'ADMIN',
     isActive: true,
+    mustChangePassword: false,
     createdAt: now,
     updatedAt: now,
     lastLoginAt: null,
@@ -39,6 +40,10 @@ export class InMemoryAdminRepository implements AdminRepository {
 
   async findByGoogleId(googleId: string) {
     return this.admins.find((admin) => admin.googleId === googleId) ?? null;
+  }
+
+  async findById(adminUserId: string) {
+    return this.admins.find((admin) => admin.id === adminUserId) ?? null;
   }
 
   async linkGoogleId(input: { adminUserId: string; email: string; googleId: string; avatarUrl?: string }) {
@@ -64,10 +69,11 @@ export class InMemoryAdminRepository implements AdminRepository {
     }
   }
 
-  async updatePassword(adminUserId: string, passwordHash: string) {
+  async updatePassword(adminUserId: string, passwordHash: string, mustChangePassword: boolean) {
     const admin = this.admins.find((item) => item.id === adminUserId);
     if (admin) {
       admin.passwordHash = passwordHash;
+      admin.mustChangePassword = mustChangePassword;
       admin.version += 1;
     }
   }

@@ -20,8 +20,8 @@ export class ResendEmailSender implements EmailSender {
     await this.resend.emails.send({
       from: this.from,
       to: input.to,
-      subject: 'Redefinicao de senha - Paladar Buffet',
-      html: `<p>Ola, ${input.name}.</p><p>Acesse este link para redefinir sua senha:</p><p><a href="${input.resetUrl}">Redefinir senha</a></p>`
+      subject: 'Redefinição de senha - Paladar Buffet',
+      html: `<p>Olá, ${input.name}.</p><p>Acesse este link para redefinir sua senha:</p><p><a href="${input.resetUrl}">Redefinir senha</a></p>`
     });
   }
 }
