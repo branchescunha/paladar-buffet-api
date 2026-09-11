@@ -39,6 +39,11 @@ interface AppOptions {
 
 export function createApp(options: AppOptions = {}) {
   const app = express();
+
+  if (env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   const authService = options.authService ?? makeAuthService();
   const quoteRequestService = options.quoteRequestService ?? makeQuoteRequestService();
   const customerService = options.customerService ?? makeCustomerService();
