@@ -13,7 +13,12 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
     return;
   }
 
-  request.log.error({ err: error, requestId: request.id }, 'Unhandled request error');
-  const message = process.env.NODE_ENV === 'production' ? 'Erro interno.' : error.message;
+  const normalizedError = error instanceof Error ? error : new Error(String(error));
+  const stack = normalizedError.stack ? `\n${normalizedError.stack}` : '';
+  request.log.error(
+    { err: normalizedError, requestId: request.id },
+    `Unhandled request error | requestId=${request.id} | ${normalizedError.name}: ${normalizedError.message}${stack}`
+  );
+  const message = process.env.NODE_ENV === 'production' ? 'Erro interno.' : normalizedError.message;
   response.status(500).json({ error: { code: 'INTERNAL_ERROR', message } });
 };
