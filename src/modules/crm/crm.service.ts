@@ -5,6 +5,7 @@ export interface CustomerService {
   create(input: CustomerInput): Promise<unknown>;
   findById(id: string): Promise<unknown | null>;
   update(id: string, input: Partial<CustomerInput>): Promise<unknown | null>;
+  delete(id: string): Promise<boolean>;
 }
 
 export interface EventService {
@@ -12,6 +13,7 @@ export interface EventService {
   create(input: EventInput): Promise<unknown>;
   findById(id: string): Promise<unknown | null>;
   update(id: string, input: EventUpdate): Promise<unknown | null>;
+  delete(id: string): Promise<boolean>;
   countConfirmed(): Promise<number>;
 }
 

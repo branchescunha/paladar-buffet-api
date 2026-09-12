@@ -1,4 +1,5 @@
-import { ApiError } from '../../shared/errors.js';
+import { Prisma } from '@prisma/client';
+import { ApiError, resourceConflictError } from '../../shared/errors.js';
 import type { CustomerInput, EventInput, EventStatus, EventUpdate } from './crm.schemas.js';
 import type { CustomerService, EventService, QuoteConversionService } from './crm.service.js';
 
@@ -37,6 +38,25 @@ export class PrismaCustomerService implements CustomerService {
       data: { ...input, email: input.email?.toLowerCase() }
     });
     return result.count ? this.findById(id) : null;
+  }
+
+  async delete(id: string) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const customer = await tx.customer.findUnique({
+          where: { id },
+          select: { id: true, _count: { select: { events: true, proposals: true } } }
+        });
+        if (!customer) return false;
+        if (customer._count.events || customer._count.proposals) throw customerDependencyError();
+        await tx.customer.delete({ where: { id } });
+        return true;
+      });
+    } catch (error) {
+      if (isPrismaError(error, 'P2025')) return false;
+      if (isPrismaError(error, 'P2003')) throw customerDependencyError();
+      throw error;
+    }
   }
 }
 
@@ -79,10 +99,33 @@ export class PrismaEventService implements EventService {
     const result = await this.prisma.event.updateMany({ where: { id }, data: input });
     return result.count ? this.findById(id) : null;
   }
+  async delete(id: string) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const event = await tx.event.findUnique({
+          where: { id },
+          select: { id: true, _count: { select: { proposals: true } } }
+        });
+        if (!event) return false;
+        if (event._count.proposals) throw eventDependencyError();
+        await tx.event.delete({ where: { id } });
+        return true;
+      });
+    } catch (error) {
+      if (isPrismaError(error, 'P2025')) return false;
+      if (isPrismaError(error, 'P2003')) throw eventDependencyError();
+      throw error;
+    }
+  }
   countConfirmed() {
     return this.prisma.event.count({ where: { status: 'CONFIRMADO' } });
   }
 }
+
+const customerDependencyError = () => resourceConflictError('Este cliente possui eventos ou propostas vinculados e não pode ser excluído.');
+const eventDependencyError = () => resourceConflictError('Este evento possui proposta vinculada e não pode ser excluído.');
+const isPrismaError = (error: unknown, code: string) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
 
 export class PrismaQuoteConversionService implements QuoteConversionService {
   constructor(private readonly prisma: import('@prisma/client').PrismaClient) {}

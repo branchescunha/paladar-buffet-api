@@ -33,6 +33,11 @@ export function proposalRoutes(authService: AuthService, service: ProposalServic
     response.json(item);
   }));
   router.patch('/:id/status', requireAuth(authService), requireAdmin, csrfProtection(authService), asyncHandler(async (request, response) => { const item = await service.updateStatus(proposalIdSchema.parse(request.params).id, proposalStatusUpdateSchema.parse(request.body).status); if (!item) throw notFoundError(); response.json(item); }));
+  router.delete('/:id', requireAuth(authService), requireAdmin, csrfProtection(authService), asyncHandler(async (request, response) => {
+    const deleted = await service.delete(proposalIdSchema.parse(request.params).id);
+    if (!deleted) throw notFoundError();
+    response.status(204).send();
+  }));
   return router;
 }
 

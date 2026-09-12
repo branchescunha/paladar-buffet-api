@@ -39,4 +39,33 @@ describe('admin proposals', () => {
     expect(response.status).toBe(201);
     expect(proposalService.createDraftFromQuote).toHaveBeenCalledWith('quote-1');
   });
+
+  it('deletes an existing proposal through the protected route', async () => {
+    const proposalService = { delete: vi.fn().mockResolvedValue(true) };
+
+    const response = await request(createApp({ authService, proposalService } as never))
+      .delete('/admin/proposals/proposal-1')
+      .set('Cookie', ['paladar_admin_session=session', 'paladar_csrf=csrf'])
+      .set('x-csrf-token', 'csrf');
+
+    expect(response.status).toBe(204);
+  });
+
+  it('returns 404 when deleting a proposal that does not exist', async () => {
+    const proposalService = { delete: vi.fn().mockResolvedValue(false) };
+
+    const response = await request(createApp({ authService, proposalService } as never))
+      .delete('/admin/proposals/missing-proposal')
+      .set('Cookie', ['paladar_admin_session=session', 'paladar_csrf=csrf'])
+      .set('x-csrf-token', 'csrf');
+
+    expect(response.status).toBe(404);
+  });
+
+  it('requires authentication and CSRF protection to delete proposals', async () => {
+    const proposalService = { delete: vi.fn().mockResolvedValue(true) };
+
+    expect((await request(createApp({ proposalService } as never)).delete('/admin/proposals/proposal-1')).status).toBe(401);
+    expect((await request(createApp({ authService, proposalService } as never)).delete('/admin/proposals/proposal-1').set('Cookie', 'paladar_admin_session=session')).status).toBe(403);
+  });
 });

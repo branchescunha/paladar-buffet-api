@@ -2,6 +2,7 @@ import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { AuthService } from '../../src/modules/auth/auth.service.js';
+import { ApiError } from '../../src/shared/errors.js';
 
 function makeAuthService() {
   return {
@@ -58,6 +59,51 @@ describe('admin customers and events', () => {
     expect(customerService.update).toHaveBeenCalledWith('customer-1', { name: 'Ana Silva' });
   });
 
+  it('deletes an existing customer through the protected route', async () => {
+    const customerService = { delete: vi.fn().mockResolvedValue(true) };
+
+    const response = await request(createApp({ authService: makeAuthService(), customerService } as never))
+      .delete('/admin/customers/customer-1')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(204);
+  });
+
+  it('returns 404 when deleting a customer that does not exist', async () => {
+    const customerService = { delete: vi.fn().mockResolvedValue(false) };
+
+    const response = await request(createApp({ authService: makeAuthService(), customerService } as never))
+      .delete('/admin/customers/missing-customer')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(404);
+  });
+
+  it('returns a business conflict without exposing persistence details when customer dependencies exist', async () => {
+    const customerService = {
+      delete: vi.fn().mockRejectedValue(new ApiError(409, 'Este cliente possui eventos ou propostas vinculados e n\u00e3o pode ser exclu\u00eddo.', 'RESOURCE_CONFLICT'))
+    };
+
+    const response = await request(createApp({ authService: makeAuthService(), customerService } as never))
+      .delete('/admin/customers/customer-1')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: { code: 'RESOURCE_CONFLICT', message: 'Este cliente possui eventos ou propostas vinculados e n\u00e3o pode ser exclu\u00eddo.' } });
+    expect(JSON.stringify(response.body)).not.toMatch(/Prisma|P2003|foreign key/i);
+  });
+
+  it('requires authentication and CSRF protection to delete customers', async () => {
+    const customerService = { delete: vi.fn().mockResolvedValue(true) };
+    const app = createApp({ authService: makeAuthService(), customerService } as never);
+
+    expect((await request(createApp({ customerService } as never)).delete('/admin/customers/customer-1')).status).toBe(401);
+    expect((await request(app).delete('/admin/customers/customer-1').set('Cookie', 'paladar_admin_session=session-token')).status).toBe(403);
+  });
+
   it('creates an event through the protected administrative route', async () => {
     const eventService = {
       create: vi.fn().mockResolvedValue({ id: 'event-1', status: 'PLANEJAMENTO' }),
@@ -98,6 +144,51 @@ describe('admin customers and events', () => {
     expect((await request(app).get('/admin/events/event-1').set('Cookie', 'paladar_admin_session=session-token')).status).toBe(200);
     expect((await request(app).patch('/admin/events/event-1').set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token']).set('x-csrf-token', 'csrf-token').send({ status: 'CONFIRMADO' })).status).toBe(200);
     expect(eventService.update).toHaveBeenCalledWith('event-1', { status: 'CONFIRMADO' });
+  });
+
+  it('deletes an event without proposals through the protected route', async () => {
+    const eventService = { delete: vi.fn().mockResolvedValue(true) };
+
+    const response = await request(createApp({ authService: makeAuthService(), eventService } as never))
+      .delete('/admin/events/event-1')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(204);
+  });
+
+  it('returns 404 when deleting an event that does not exist', async () => {
+    const eventService = { delete: vi.fn().mockResolvedValue(false) };
+
+    const response = await request(createApp({ authService: makeAuthService(), eventService } as never))
+      .delete('/admin/events/missing-event')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(404);
+  });
+
+  it('returns a business conflict and keeps persistence errors private when an event has proposals', async () => {
+    const eventService = {
+      delete: vi.fn().mockRejectedValue(new ApiError(409, 'Este evento possui proposta vinculada e n\u00e3o pode ser exclu\u00eddo.', 'RESOURCE_CONFLICT'))
+    };
+
+    const response = await request(createApp({ authService: makeAuthService(), eventService } as never))
+      .delete('/admin/events/event-1')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: { code: 'RESOURCE_CONFLICT', message: 'Este evento possui proposta vinculada e n\u00e3o pode ser exclu\u00eddo.' } });
+    expect(JSON.stringify(response.body)).not.toMatch(/Prisma|P2003|foreign key/i);
+  });
+
+  it('requires authentication and CSRF protection to delete events', async () => {
+    const eventService = { delete: vi.fn().mockResolvedValue(true) };
+    const app = createApp({ authService: makeAuthService(), eventService } as never);
+
+    expect((await request(createApp({ eventService } as never)).delete('/admin/events/event-1')).status).toBe(401);
+    expect((await request(app).delete('/admin/events/event-1').set('Cookie', 'paladar_admin_session=session-token')).status).toBe(403);
   });
 
   it('converts a quote request without changing its current status', async () => {

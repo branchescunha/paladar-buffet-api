@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { ApiError } from '../../shared/errors.js';
+import { ApiError, resourceConflictError } from '../../shared/errors.js';
 import type { ProposalInput, ProposalStatus } from './proposal.schemas.js';
 import type { ProposalService } from './proposal.service.js';
 
@@ -55,6 +55,23 @@ export class PrismaProposalService implements ProposalService {
       if (proposal.quoteRequestId && quoteStatus) await tx.quoteRequest.update({ where: { id: proposal.quoteRequestId }, data: { status: quoteStatus } });
       return result;
     });
+  }
+
+  async delete(id: string) {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const proposal = await tx.proposal.findUnique({ where: { id }, select: { id: true } });
+        if (!proposal) return false;
+        await tx.proposal.delete({ where: { id } });
+        return true;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') return false;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw resourceConflictError('Esta proposta possui dependências e não pode ser excluída.');
+      }
+      throw error;
+    }
   }
 
   async createDraftFromQuote(quoteRequestId: string) {

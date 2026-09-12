@@ -8,6 +8,9 @@ export class ApiError extends Error {
   }
 }
 
+export const resourceConflictError = (message: string) =>
+  new ApiError(409, message, 'RESOURCE_CONFLICT');
+
 export const invalidCredentialsError = () =>
   new ApiError(401, 'E-mail ou senha inválidos.', 'INVALID_CREDENTIALS');
 

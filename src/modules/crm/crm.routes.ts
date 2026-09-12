@@ -26,6 +26,11 @@ export function customerRoutes(authService: AuthService, service: CustomerServic
     if (!item) throw notFoundError();
     response.json(item);
   }));
+  router.delete('/:id', requireAuth(authService), requireAdmin, csrfProtection(authService), asyncHandler(async (request, response) => {
+    const deleted = await service.delete(idParamsSchema.parse(request.params).id);
+    if (!deleted) throw notFoundError();
+    response.status(204).send();
+  }));
 
   return router;
 }
@@ -48,6 +53,11 @@ export function eventRoutes(authService: AuthService, service: EventService) {
     const item = await service.update(idParamsSchema.parse(request.params).id, eventUpdateSchema.parse(request.body));
     if (!item) throw notFoundError();
     response.json(item);
+  }));
+  router.delete('/:id', requireAuth(authService), requireAdmin, csrfProtection(authService), asyncHandler(async (request, response) => {
+    const deleted = await service.delete(idParamsSchema.parse(request.params).id);
+    if (!deleted) throw notFoundError();
+    response.status(204).send();
   }));
 
   return router;

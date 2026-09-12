@@ -210,7 +210,7 @@ model Proposal {
   updatedAt       DateTime       @updatedAt
 
   customer     Customer     @relation(fields: [customerId], references: [id])
-  event        Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  event        Event?       @relation(fields: [eventId], references: [id], onDelete: Restrict)
   quoteRequest QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
   items        ProposalItem[]
 
