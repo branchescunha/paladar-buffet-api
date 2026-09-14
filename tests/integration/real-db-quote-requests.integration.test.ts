@@ -1,10 +1,9 @@
 import request from 'supertest';
-import { PrismaClient } from '@prisma/client';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { prisma } from '../../src/lib/prisma.js';
 
 const runRealDbTests = process.env.RUN_REAL_DB_TESTS === '1';
-const prisma = new PrismaClient();
 const testRunId = `quote-real-db-${Date.now()}`;
 const testEmail = `${testRunId}@paladarbuffet.test`;
 

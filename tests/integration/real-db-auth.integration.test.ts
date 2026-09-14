@@ -1,8 +1,8 @@
 import argon2 from 'argon2';
 import request from 'supertest';
-import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { prisma } from '../../src/lib/prisma.js';
 import { sha256 } from '../../src/shared/crypto.js';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { ResendEmailSender } from '../../src/modules/auth/email.sender.js';
@@ -15,7 +15,6 @@ import {
 } from '../../src/modules/auth/prisma-auth.repositories.js';
 
 const runRealDbTests = process.env.RUN_REAL_DB_TESTS === '1';
-const prisma = new PrismaClient();
 const testRunId = `real-db-${Date.now()}`;
 const adminEmail = `${testRunId}@paladarbuffet.test`;
 const initialPassword = 'StrongPass123';

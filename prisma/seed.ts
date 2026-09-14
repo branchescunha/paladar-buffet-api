@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { PrismaPg } from '@prisma/adapter-pg';
 import argon2 from 'argon2';
 import { PrismaClient } from '@prisma/client';
 import { passwordSchema } from '../src/modules/auth/password-policy.js';
@@ -9,7 +10,14 @@ import {
   type ProvisionedAdmin
 } from './admin-provisioning.js';
 
-const prisma = new PrismaClient();
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required to run the seed.');
+}
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: databaseUrl })
+});
 
 async function main() {
   const initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
