@@ -3,6 +3,8 @@ import { ApiError, resourceConflictError } from '../../shared/errors.js';
 import type { CustomerInput, EventInput, EventStatus, EventUpdate } from './crm.schemas.js';
 import type { CustomerService, EventService, QuoteConversionService } from './crm.service.js';
 
+const normalizeEmail = (email: string | null | undefined) => email === undefined ? undefined : email?.toLowerCase() ?? null;
+
 export class PrismaCustomerService implements CustomerService {
   constructor(private readonly prisma: import('@prisma/client').PrismaClient) {}
   list(search?: string) {
@@ -21,7 +23,7 @@ export class PrismaCustomerService implements CustomerService {
     });
   }
   create(input: CustomerInput) {
-    return this.prisma.customer.create({ data: { ...input, email: input.email?.toLowerCase() } });
+    return this.prisma.customer.create({ data: { ...input, email: normalizeEmail(input.email) } });
   }
   findById(id: string) {
     return this.prisma.customer.findUnique({
@@ -35,7 +37,7 @@ export class PrismaCustomerService implements CustomerService {
   async update(id: string, input: Partial<CustomerInput>) {
     const result = await this.prisma.customer.updateMany({
       where: { id },
-      data: { ...input, email: input.email?.toLowerCase() }
+      data: { ...input, email: normalizeEmail(input.email) }
     });
     return result.count ? this.findById(id) : null;
   }

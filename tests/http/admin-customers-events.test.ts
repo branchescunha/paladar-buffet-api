@@ -59,6 +59,31 @@ describe('admin customers and events', () => {
     expect(customerService.update).toHaveBeenCalledWith('customer-1', { name: 'Ana Silva' });
   });
 
+  it('updates a customer when optional notes are empty', async () => {
+    const customerService = {
+      update: vi.fn().mockResolvedValue({ id: 'customer-1', name: 'Isa' })
+    };
+
+    const response = await request(createApp({ authService: makeAuthService(), customerService } as never))
+      .patch('/admin/customers/customer-1')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token')
+      .send({
+        name: 'Isa',
+        phone: '61999999999',
+        email: 'isabele@example.com',
+        notes: null
+      });
+
+    expect(response.status).toBe(200);
+    expect(customerService.update).toHaveBeenCalledWith('customer-1', {
+      name: 'Isa',
+      phone: '61999999999',
+      email: 'isabele@example.com',
+      notes: null
+    });
+  });
+
   it('deletes an existing customer through the protected route', async () => {
     const customerService = { delete: vi.fn().mockResolvedValue(true) };
 
@@ -144,6 +169,39 @@ describe('admin customers and events', () => {
     expect((await request(app).get('/admin/events/event-1').set('Cookie', 'paladar_admin_session=session-token')).status).toBe(200);
     expect((await request(app).patch('/admin/events/event-1').set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token']).set('x-csrf-token', 'csrf-token').send({ status: 'CONFIRMADO' })).status).toBe(200);
     expect(eventService.update).toHaveBeenCalledWith('event-1', { status: 'CONFIRMADO' });
+  });
+
+  it('updates an event when optional notes are empty', async () => {
+    const eventService = {
+      update: vi.fn().mockResolvedValue({ id: 'event-1', status: 'CONFIRMADO' })
+    };
+
+    const response = await request(createApp({ authService: makeAuthService(), eventService } as never))
+      .patch('/admin/events/event-1')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token')
+      .send({
+        customerId: 'customer-1',
+        eventType: 'casamento',
+        eventDate: '2026-10-01',
+        eventTime: '15:00',
+        location: 'Brasilia',
+        guestCount: 500,
+        notes: null,
+        status: 'CONFIRMADO'
+      });
+
+    expect(response.status).toBe(200);
+    expect(eventService.update).toHaveBeenCalledWith('event-1', {
+      customerId: 'customer-1',
+      eventType: 'casamento',
+      eventDate: new Date('2026-10-01T12:00:00.000Z'),
+      eventTime: '15:00',
+      location: 'Brasilia',
+      guestCount: 500,
+      notes: null,
+      status: 'CONFIRMADO'
+    });
   });
 
   it('deletes an event without proposals through the protected route', async () => {

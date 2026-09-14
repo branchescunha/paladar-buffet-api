@@ -5,6 +5,15 @@ export const eventStatusSchema = z.enum(eventStatusValues);
 export type EventStatus = z.infer<typeof eventStatusSchema>;
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().transform((value) => value || undefined);
+const nullableOptionalText = (max: number) =>
+  z.union([z.string().trim().max(max).transform((value) => value || null), z.null()]).optional();
+const nullableOptionalEmail = z
+  .union([
+    z.string().trim().email().max(180),
+    z.string().trim().length(0).transform(() => null),
+    z.null()
+  ])
+  .optional();
 const phoneSchema = z
   .string()
   .trim()
@@ -21,8 +30,8 @@ const timeSchema = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 export const customerInputSchema = z.object({
   name: z.string().trim().min(2).max(120),
   phone: phoneSchema,
-  email: z.string().trim().email().max(180).optional().or(z.literal('').transform(() => undefined)),
-  notes: optionalText(1200)
+  email: nullableOptionalEmail,
+  notes: nullableOptionalText(1200)
 }).strict();
 
 export const customerListSchema = z.object({ search: optionalText(120) }).strict();
@@ -35,7 +44,7 @@ export const eventInputSchema = z.object({
   eventTime: timeSchema,
   location: z.string().trim().min(2).max(140),
   guestCount: z.coerce.number().int().min(1).max(10000),
-  notes: optionalText(1200),
+  notes: nullableOptionalText(1200),
   status: eventStatusSchema.default('PLANEJAMENTO')
 }).strict();
 
