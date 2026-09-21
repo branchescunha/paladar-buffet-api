@@ -5,7 +5,7 @@ describe('PrismaProposalPdfService', () => {
   it('renders persisted proposal data in a PDF without writing the proposal', async () => {
     const findUnique = vi.fn().mockResolvedValue({
       customer: { name: 'Ana Souza', phone: '61999999999', email: 'ana@example.com' },
-      event: { eventType: 'Casamento', eventDate: new Date('2099-10-01T12:00:00.000Z'), eventTime: '19:30', location: 'Brasília', guestCount: 120 },
+      event: { eventType: 'casamento', eventDate: new Date('2099-10-01T12:00:00.000Z'), eventTime: '19:30', location: 'Brasília', guestCount: 120 },
       quoteRequest: { fullName: 'Ana Souza' }, description: 'Buffet completo', notes: 'Serviço de mesa incluso.', validUntil: new Date('2099-09-20T12:00:00.000Z'), status: 'ENVIADA', subtotalCents: 200000, adjustmentCents: -10000, totalCents: 190000, createdAt: new Date('2099-09-01T12:00:00.000Z'),
       items: [{ description: 'Buffet', quantity: 2, unitPriceCents: 100000, subtotalCents: 200000 }]
     });
@@ -22,6 +22,10 @@ describe('PrismaProposalPdfService', () => {
     expect(content).toContain('7669616461');
     expect(content).toContain('42756666');
     expect(content).toContain('6574');
+    expect(content).toContain(Buffer.from('Casamento').toString('hex'));
+    expect(content).toContain(Buffer.from('aladar Buff').toString('hex'));
+    expect(content).toContain(Buffer.from('et - Proposta comercial').toString('hex'));
+    expect(Number(content.match(/\/Count (\d+)/)?.[1])).toBe(1);
     expect(findUnique).toHaveBeenCalledTimes(1);
   });
 

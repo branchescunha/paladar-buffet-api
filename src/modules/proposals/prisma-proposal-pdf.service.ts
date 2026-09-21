@@ -11,6 +11,11 @@ const statusLabels: Record<string, string> = {
   RASCUNHO: 'Rascunho', ENVIADA: 'Enviada', APROVADA: 'Aprovada', RECUSADA: 'Recusada', CANCELADA: 'Cancelada'
 };
 
+const eventTypeLabels: Record<string, string> = {
+  casamento: 'Casamento', aniversario: 'Aniversário', corporativo: 'Corporativo', confraternizacao: 'Confraternização',
+  churrasco: 'Churrasco', reuniao: 'Reunião', 'coffee-break': 'Coffee break', brunch: 'Brunch', outro: 'Outro'
+};
+
 export class PrismaProposalPdfService implements ProposalPdfService {
   constructor(private readonly prisma: import('@prisma/client').PrismaClient) {}
 
@@ -51,20 +56,20 @@ function renderPdf(proposal: {
     document.on('error', reject);
 
     document.image(logo, 48, 44, { fit: [120, 54] });
-    document.fillColor('#18352A').fontSize(20).font('Helvetica-Bold').text('Proposta Comercial', 360, 50, { align: 'right' });
-    document.fillColor('#5C665E').fontSize(9).font('Helvetica').text(`Emitida em ${formatDate(proposal.createdAt)}`, 360, 76, { align: 'right' });
-    document.text(`Status: ${statusLabels[proposal.status] ?? proposal.status}`, 360, 90, { align: 'right' });
-    line(document, 112);
+    document.fillColor('#18352A').fontSize(20).font('Helvetica-Bold').text('Proposta Comercial', 280, 50, { width: 267, align: 'right', lineBreak: false });
+    document.fillColor('#5C665E').fontSize(9).font('Helvetica').text(`Emitida em ${formatDate(proposal.createdAt)}`, 280, 80, { width: 267, align: 'right', lineBreak: false });
+    document.text(`Status: ${statusLabels[proposal.status] ?? proposal.status}`, 280, 96, { width: 267, align: 'right', lineBreak: false });
+    line(document, 118);
 
-    section(document, 'Paladar Buffet', 128);
-    document.fillColor('#313A34').fontSize(10).font('Helvetica').text('Brasília/DF e região\nAtendimento personalizado para eventos e celebrações.', 48, 146);
-    section(document, 'Cliente', 194);
-    document.fillColor('#313A34').fontSize(10).font('Helvetica').text([proposal.customer.name, proposal.customer.phone, proposal.customer.email].filter(Boolean).join('\n'), 48, 212);
+    section(document, 'Paladar Buffet', 134);
+    document.fillColor('#313A34').fontSize(10).font('Helvetica').text('Brasília/DF e região\nAtendimento personalizado para eventos e celebrações.', 48, 152);
+    section(document, 'Cliente', 200);
+    document.fillColor('#313A34').fontSize(10).font('Helvetica').text([proposal.customer.name, proposal.customer.phone, proposal.customer.email].filter(Boolean).join('\n'), 48, 218);
 
-    let cursor = 268;
+    let cursor = 274;
     if (proposal.event) {
       section(document, 'Evento', cursor);
-      document.fillColor('#313A34').fontSize(10).font('Helvetica').text(`${proposal.event.eventType}\n${formatDate(proposal.event.eventDate)} às ${proposal.event.eventTime}\n${proposal.event.location} · ${proposal.event.guestCount} convidados`, 48, cursor + 18);
+      document.fillColor('#313A34').fontSize(10).font('Helvetica').text(`${eventTypeLabels[proposal.event.eventType] ?? proposal.event.eventType}\n${formatDate(proposal.event.eventDate)} às ${proposal.event.eventTime}\n${proposal.event.location} · ${proposal.event.guestCount} convidados`, 48, cursor + 18);
       cursor += 82;
     }
     if (proposal.description) { section(document, 'Descrição', cursor); document.fillColor('#313A34').fontSize(10).font('Helvetica').text(proposal.description, 48, cursor + 18, { width: 500 }); cursor += 54; }
@@ -93,7 +98,7 @@ function renderPdf(proposal: {
     section(document, 'Validade', y);
     document.fillColor('#313A34').font('Helvetica').fontSize(10).text(`Esta proposta é válida até ${formatDate(proposal.validUntil)}.`, 48, y + 18);
     if (proposal.notes) { y += 56; section(document, 'Observações', y); document.fillColor('#313A34').font('Helvetica').fontSize(10).text(proposal.notes, 48, y + 18, { width: 500 }); }
-    document.fillColor('#5C665E').fontSize(8).font('Helvetica').text('Paladar Buffet · Proposta comercial gerada para atendimento.', 48, 770, { width: 500, align: 'center' });
+    document.fillColor('#5C665E').fontSize(8).font('Helvetica').text('Paladar Buffet - Proposta comercial', 48, 770, { width: 500, align: 'center' });
     document.end();
   });
 }
