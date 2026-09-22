@@ -78,6 +78,10 @@ export const quoteRequestSchema = z
     preferredContact: z.enum(preferredContacts).default('whatsapp'),
     menuPreferences,
     serviceNeeds,
+    menuOptionIds: z
+      .array(z.string().trim().min(1).max(64))
+      .max(200)
+      .refine((items) => new Set(items).size === items.length, 'Não repita opções do cardápio.'),
     dietaryRestrictions: optionalText(600),
     acceptedPrivacy: z.literal(true),
     website: optionalText(200)

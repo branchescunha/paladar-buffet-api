@@ -25,6 +25,12 @@ import type { ProposalPdfService } from './modules/proposals/proposal-pdf.servic
 import { makeAdminUserManagementService } from './modules/admin-users/admin-user.factory.js';
 import { adminUserRoutes } from './modules/admin-users/admin-user.routes.js';
 import type { AdminUserManagementService } from './modules/admin-users/admin-user.service.js';
+import { makeMenuService } from './modules/menu/menu.factory.js';
+import { adminMenuRoutes, publicMenuRoutes } from './modules/menu/menu.routes.js';
+import type { MenuService } from './modules/menu/menu.service.js';
+import { makePaymentMethodService } from './modules/payment-methods/payment-method.factory.js';
+import { paymentMethodRoutes } from './modules/payment-methods/payment-method.routes.js';
+import type { PaymentMethodService } from './modules/payment-methods/payment-method.service.js';
 
 interface AppOptions {
   authService?: AuthService;
@@ -35,6 +41,8 @@ interface AppOptions {
   proposalService?: ProposalService;
   pdfService?: ProposalPdfService;
   adminUserService?: AdminUserManagementService;
+  menuService?: MenuService;
+  paymentMethodService?: PaymentMethodService;
 }
 
 export function createApp(options: AppOptions = {}) {
@@ -52,6 +60,8 @@ export function createApp(options: AppOptions = {}) {
   const proposalService = options.proposalService ?? makeProposalService();
   const pdfService = options.pdfService ?? makeProposalPdfService();
   const adminUserService = options.adminUserService ?? makeAdminUserManagementService();
+  const menuService = options.menuService ?? makeMenuService();
+  const paymentMethodService = options.paymentMethodService ?? makePaymentMethodService();
 
   app.disable('x-powered-by');
   app.use(requestId);
@@ -85,6 +95,7 @@ export function createApp(options: AppOptions = {}) {
 
   app.use('/auth', authRoutes(authService));
   app.use('/quote-requests', quoteRequestRoutes(quoteRequestService));
+  app.use('/menu', publicMenuRoutes(menuService));
   app.use('/admin/dashboard', adminDashboardRoutes(authService, quoteRequestService, eventService, proposalService));
   app.use('/admin/quote-requests', adminQuoteRequestRoutes(authService, quoteRequestService, conversionService));
   app.use('/admin/customers', customerRoutes(authService, customerService));
@@ -92,6 +103,8 @@ export function createApp(options: AppOptions = {}) {
   app.use('/admin/users', adminUserRoutes(authService, adminUserService));
   app.use('/admin/proposals', proposalRoutes(authService, proposalService, pdfService));
   app.use('/admin/quote-requests', quoteProposalRoutes(authService, proposalService));
+  app.use('/admin/menu', adminMenuRoutes(authService, menuService));
+  app.use('/admin/payment-methods', paymentMethodRoutes(authService, paymentMethodService));
   app.use(errorHandler);
 
   return app;

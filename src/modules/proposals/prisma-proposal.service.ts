@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { ApiError, resourceConflictError } from '../../shared/errors.js';
 import type { ProposalInput, ProposalStatus } from './proposal.schemas.js';
 import type { ProposalService } from './proposal.service.js';
+import { calculatePerGuestTotals, defaultPaymentSchedule, defaultProposalValidity, validatePaymentSchedule } from './proposal-commercial.js';
 
 const validationError = (message: string) => new ApiError(400, message, 'VALIDATION_ERROR');
 
@@ -22,15 +23,25 @@ export class PrismaProposalService implements ProposalService {
   findById(id: string) {
     return this.prisma.proposal.findUnique({
       where: { id },
-      include: { customer: true, event: true, quoteRequest: { select: { id: true, fullName: true, status: true } }, items: { orderBy: { position: 'asc' } } }
+      include: proposalDetailInclude
     });
   }
 
-  create(input: ProposalInput) {
+  create(input: ProposalInput, responsibleAdminId?: string) {
     return this.prisma.$transaction(async (tx) => {
       await assertRelationships(tx, input);
       const totals = calculateTotals(input);
-      return tx.proposal.create({ data: { ...proposalData(input, totals), items: { create: itemsData(input, totals.itemSubtotals) } }, include: proposalDetailInclude });
+      const schedule = input.pricingMode === 'PER_GUEST' ? input.paymentInstallments ?? defaultPaymentSchedule() : [];
+      validateScheduleWhenPresent(schedule);
+      return tx.proposal.create({
+        data: {
+          ...proposalData(input, totals, responsibleAdminId),
+          items: { create: itemsData(input, totals.itemSubtotals) },
+          includedServices: { create: includedServicesData(input) },
+          paymentInstallments: { create: paymentInstallmentsData(schedule) }
+        },
+        include: proposalDetailInclude
+      });
     });
   }
 
@@ -40,8 +51,17 @@ export class PrismaProposalService implements ProposalService {
       if (!existing) return null;
       await assertRelationships(tx, input);
       const totals = calculateTotals(input);
+      const schedule = input.pricingMode === 'PER_GUEST' ? input.paymentInstallments ?? defaultPaymentSchedule() : [];
+      validateScheduleWhenPresent(schedule);
       return tx.proposal.update({
-        where: { id }, data: { ...proposalData(input, totals), items: { deleteMany: {}, create: itemsData(input, totals.itemSubtotals) } }, include: proposalDetailInclude
+        where: { id },
+        data: {
+          ...proposalData(input, totals),
+          items: { deleteMany: {}, create: itemsData(input, totals.itemSubtotals) },
+          includedServices: { deleteMany: {}, create: includedServicesData(input) },
+          paymentInstallments: { deleteMany: {}, create: paymentInstallmentsData(schedule) }
+        },
+        include: proposalDetailInclude
       });
     });
   }
@@ -74,7 +94,7 @@ export class PrismaProposalService implements ProposalService {
     }
   }
 
-  async createDraftFromQuote(quoteRequestId: string) {
+  async createDraftFromQuote(quoteRequestId: string, responsibleAdminId?: string) {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const quote = await tx.quoteRequest.findUnique({ where: { id: quoteRequestId }, include: { event: true } });
@@ -82,7 +102,14 @@ export class PrismaProposalService implements ProposalService {
         const existing = await tx.proposal.findFirst({ where: { quoteRequestId, status: 'RASCUNHO' }, include: proposalDetailInclude });
         if (existing) return existing;
         return tx.proposal.create({
-          data: { customerId: quote.customerId, eventId: quote.event.id, quoteRequestId, validUntil: new Date(Date.now() + 14 * 86400000), items: { create: [{ description: quote.eventTypeOther ?? quote.eventType, quantity: 1, unitPriceCents: 0, subtotalCents: 0, position: 0 }] } },
+          data: {
+            customerId: quote.customerId,
+            eventId: quote.event.id,
+            quoteRequestId,
+            validUntil: defaultProposalValidity(),
+            responsibleAdminId,
+            items: { create: [{ description: quote.eventTypeOther ?? quote.eventType, quantity: 1, unitPriceCents: 0, subtotalCents: 0, position: 0 }] }
+          },
           include: proposalDetailInclude
         });
       });
@@ -97,9 +124,25 @@ export class PrismaProposalService implements ProposalService {
   countSent() { return this.prisma.proposal.count({ where: { status: 'ENVIADA' } }); }
 }
 
-const proposalDetailInclude = { customer: true, event: true, quoteRequest: { select: { id: true, fullName: true, status: true } }, items: { orderBy: { position: 'asc' } } } as const;
+const proposalDetailInclude = {
+  customer: true,
+  event: true,
+  quoteRequest: { select: { id: true, fullName: true, status: true } },
+  items: { orderBy: { position: 'asc' } },
+  includedServices: { orderBy: { position: 'asc' } },
+  paymentInstallments: { orderBy: { position: 'asc' } },
+  responsibleAdmin: { select: { id: true, name: true, role: true } }
+} as const;
 
 function calculateTotals(input: ProposalInput) {
+  if (input.pricingMode === 'PER_GUEST') {
+    const totals = calculatePerGuestTotals({
+      guestCount: input.guestCount!,
+      pricePerGuestCents: input.pricePerGuestCents!,
+      adjustmentCents: input.adjustmentCents
+    });
+    return { itemSubtotals: [], subtotalCents: totals.baseTotalCents, baseTotalCents: totals.baseTotalCents, totalCents: totals.totalCents };
+  }
   const itemSubtotals = input.items.map((item) => {
     const subtotal = item.quantity * item.unitPriceCents;
     if (!Number.isSafeInteger(subtotal) || subtotal > 2147483647) throw validationError('Valor da proposta excede o limite permitido.');
@@ -108,13 +151,35 @@ function calculateTotals(input: ProposalInput) {
   const subtotalCents = itemSubtotals.reduce((total, value) => total + value, 0);
   const totalCents = subtotalCents + input.adjustmentCents;
   if (!Number.isSafeInteger(totalCents) || totalCents < 0 || totalCents > 2147483647) throw validationError('Total da proposta invÃ¡lido.');
-  return { itemSubtotals, subtotalCents, totalCents };
+  return { itemSubtotals, subtotalCents, baseTotalCents: null, totalCents };
 }
 
-function proposalData(input: ProposalInput, totals: { subtotalCents: number; totalCents: number }) {
-  return { customerId: input.customerId, eventId: input.eventId, quoteRequestId: input.quoteRequestId, description: input.description, notes: input.notes, validUntil: input.validUntil, subtotalCents: totals.subtotalCents, adjustmentCents: input.adjustmentCents, totalCents: totals.totalCents };
+function proposalData(
+  input: ProposalInput,
+  totals: { subtotalCents: number; baseTotalCents: number | null; totalCents: number },
+  responsibleAdminId?: string
+) {
+  return {
+    customerId: input.customerId,
+    eventId: input.eventId,
+    quoteRequestId: input.quoteRequestId,
+    description: input.description,
+    notes: input.notes,
+    validUntil: input.validUntil,
+    pricingMode: input.pricingMode ?? 'ITEMIZED',
+    guestCount: input.pricingMode === 'PER_GUEST' ? input.guestCount : null,
+    pricePerGuestCents: input.pricingMode === 'PER_GUEST' ? input.pricePerGuestCents : null,
+    baseTotalCents: totals.baseTotalCents,
+    subtotalCents: totals.subtotalCents,
+    adjustmentCents: input.adjustmentCents,
+    totalCents: totals.totalCents,
+    ...(responsibleAdminId ? { responsibleAdminId } : {})
+  };
 }
 function itemsData(input: ProposalInput, subtotals: number[]) { return input.items.map((item, position) => ({ ...item, subtotalCents: subtotals[position], position })); }
+function includedServicesData(input: ProposalInput) { return (input.includedServices ?? []).map((description, position) => ({ description, position })); }
+function paymentInstallmentsData(schedule: Array<{ description: string; percentage: number }>) { return schedule.map((item, position) => ({ ...item, position })); }
+function validateScheduleWhenPresent(schedule: Array<{ description: string; percentage: number }>) { if (schedule.length) validatePaymentSchedule(schedule); }
 
 async function assertRelationships(tx: import('@prisma/client').Prisma.TransactionClient, input: ProposalInput) {
   const customer = await tx.customer.findUnique({ where: { id: input.customerId } });

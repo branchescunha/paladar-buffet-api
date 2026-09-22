@@ -2,13 +2,28 @@ import { Prisma, type PrismaClient } from '@prisma/client';
 import type { AdminQuoteRequestListInput, QuoteRequestStatus } from './admin-quote-request.schemas.js';
 import type { QuoteRequestInput } from './quote-request.schemas.js';
 import type { AdminQuoteRequestDetail, AdminQuoteRequestSummary, DashboardQuoteRequest, QuoteRequestRepository } from './quote-request.service.js';
+import { validateMenuSelections } from '../menu/menu-selection.js';
 
 export class PrismaQuoteRequestRepository implements QuoteRequestRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   create(input: Omit<QuoteRequestInput, 'website'>) {
-    return this.prisma.quoteRequest.create({
-      data: {
+    return this.prisma.$transaction(async (transaction) => {
+      const groups = await transaction.menuSelectionGroup.findMany({
+        where: { isActive: true },
+        orderBy: { position: 'asc' },
+        include: {
+          sections: {
+            where: { isActive: true },
+            orderBy: { position: 'asc' },
+            include: { options: { where: { isActive: true }, orderBy: { position: 'asc' } } }
+          }
+        }
+      });
+      const snapshots = validateMenuSelections(groups, input.menuOptionIds);
+
+      return transaction.quoteRequest.create({
+        data: {
         fullName: input.fullName,
         email: input.email,
         phone: input.phone,
@@ -23,12 +38,14 @@ export class PrismaQuoteRequestRepository implements QuoteRequestRepository {
         menuPreferences: toJson(input.menuPreferences),
         serviceNeeds: toJson(input.serviceNeeds),
         dietaryRestrictions: input.dietaryRestrictions,
-        acceptedPrivacy: input.acceptedPrivacy
-      },
-      select: {
-        id: true,
-        createdAt: true
-      }
+          acceptedPrivacy: input.acceptedPrivacy,
+          menuSelections: { create: snapshots }
+        },
+        select: {
+          id: true,
+          createdAt: true
+        }
+      });
     });
   }
 
@@ -120,8 +137,19 @@ const adminDetailSelect = {
   dietaryRestrictions: true,
   acceptedPrivacy: true,
   source: true,
-  updatedAt: true
-} as const;
+  updatedAt: true,
+  menuSelections: {
+    orderBy: [{ groupPosition: 'asc' }, { sectionPosition: 'asc' }, { optionPosition: 'asc' }],
+    select: {
+      groupName: true,
+      groupPosition: true,
+      sectionName: true,
+      sectionPosition: true,
+      optionName: true,
+      optionPosition: true
+    }
+  }
+} satisfies Prisma.QuoteRequestSelect;
 
 function toDashboardQuoteRequest(item: {
   id: string;
@@ -163,6 +191,7 @@ function toAdminQuoteRequestDetail(item: Parameters<typeof toAdminQuoteRequestSu
   acceptedPrivacy: boolean;
   source: string;
   updatedAt: Date;
+  menuSelections: AdminQuoteRequestDetail['menuSelections'];
 }): AdminQuoteRequestDetail {
   return {
     ...toAdminQuoteRequestSummary(item),
@@ -172,7 +201,8 @@ function toAdminQuoteRequestDetail(item: Parameters<typeof toAdminQuoteRequestSu
     dietaryRestrictions: item.dietaryRestrictions,
     acceptedPrivacy: item.acceptedPrivacy,
     source: item.source,
-    updatedAt: item.updatedAt
+    updatedAt: item.updatedAt,
+    menuSelections: item.menuSelections
   };
 }
 

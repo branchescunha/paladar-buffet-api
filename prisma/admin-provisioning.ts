@@ -17,7 +17,7 @@ export interface AdminProvisioningRepository {
 }
 
 export const OFFICIAL_ADMINS = [
-  { name: 'Mauri Anderson Cunha', email: 'mauri.anderson.cunha@gmail.com', role: 'OWNER' },
+  { name: 'Mauri Anderson Cunha', email: 'mauri.anderson.cunha@gmail.com', role: 'ADMIN' },
   { name: 'Paladar Buffet DF', email: 'paladar.buffet.df@gmail.com', role: 'ADMIN' },
   { name: 'Buffet Paladar DF', email: 'buffet.paladar.df@gmail.com', role: 'ADMIN' },
   { name: 'Churrascaria Paladar DF', email: 'churrascaria.paladar.df@gmail.com', role: 'ADMIN' },

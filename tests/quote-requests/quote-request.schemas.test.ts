@@ -12,10 +12,15 @@ const validInput = {
   location: 'Brasilia-DF',
   message: 'Gostaria de um buffet completo para casamento.',
   preferredContact: 'whatsapp',
+  menuOptionIds: ['option-1'],
   acceptedPrivacy: true
 };
 
 describe('quoteRequestSchema', () => {
+  it('accepts unique menu option identifiers and rejects duplicates', () => {
+    expect(quoteRequestSchema.parse({ ...validInput, menuOptionIds: ['option-1', 'option-2'] }).menuOptionIds).toEqual(['option-1', 'option-2']);
+    expect(() => quoteRequestSchema.parse({ ...validInput, menuOptionIds: ['option-1', 'option-1'] })).toThrow('Não repita opções do cardápio.');
+  });
   it('normalizes safe public quote request input', () => {
     const parsed = quoteRequestSchema.parse(validInput);
 

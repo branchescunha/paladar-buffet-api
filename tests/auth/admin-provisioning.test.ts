@@ -33,11 +33,11 @@ describe('official admin provisioning', () => {
 
     expect(repository.admins).toHaveLength(7);
     expect(repository.admins.get('mauri.anderson.cunha@gmail.com')).toMatchObject({
-      role: 'OWNER',
+      role: 'ADMIN',
       isActive: true,
       mustChangePassword: true
     });
-    expect([...repository.admins.values()].filter(({ role }) => role === 'ADMIN')).toHaveLength(6);
+    expect([...repository.admins.values()].filter(({ role }) => role === 'ADMIN')).toHaveLength(7);
     expect(hashPassword).toHaveBeenCalledTimes(7);
   });
 

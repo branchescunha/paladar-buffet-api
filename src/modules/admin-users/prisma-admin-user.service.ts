@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { forbiddenError } from '../../shared/errors.js';
+import { forbiddenError, resourceConflictError } from '../../shared/errors.js';
 import type { AdminUserManagementService } from './admin-user.service.js';
 
 const summarySelect = {
@@ -20,14 +20,20 @@ export class PrismaAdminUserManagementService implements AdminUserManagementServ
     });
   }
 
-  async setActive(id: string, isActive: boolean) {
+  async setActive(id: string, isActive: boolean, actorId: string) {
     return this.prisma.$transaction(async (transaction) => {
       const admin = await transaction.adminUser.findUnique({ where: { id }, select: { id: true, role: true } });
       if (!admin) {
         return null;
       }
-      if (admin.role !== 'ADMIN') {
+      if (!isActive && id === actorId) {
         throw forbiddenError();
+      }
+      if (!isActive) {
+        const activeOthers = await transaction.adminUser.count({ where: { isActive: true, id: { not: id } } });
+        if (activeOthers === 0) {
+          throw resourceConflictError('Ao menos um administrador deve permanecer ativo.');
+        }
       }
 
       const updated = await transaction.adminUser.update({

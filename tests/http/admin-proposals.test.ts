@@ -30,6 +30,7 @@ describe('admin proposals', () => {
       .send({ customerId: 'customer-1', validUntil: '2099-10-01', adjustmentCents: -1000, subtotalCents: 1, totalCents: 1, items: [{ description: 'Buffet', quantity: 2, unitPriceCents: 10000 }] });
     expect(response.status).toBe(201);
     expect(proposalService.create.mock.calls[0]?.[0]).not.toHaveProperty('subtotalCents');
+    expect(proposalService.create).toHaveBeenCalledWith(expect.any(Object), 'admin-1');
   });
 
   it('returns the existing draft when a quote is clicked repeatedly', async () => {
@@ -37,7 +38,7 @@ describe('admin proposals', () => {
     const response = await request(createApp({ authService, proposalService } as never))
       .post('/admin/quote-requests/quote-1/proposal-draft').set('Cookie', ['paladar_admin_session=session', 'paladar_csrf=csrf']).set('x-csrf-token', 'csrf').send({});
     expect(response.status).toBe(201);
-    expect(proposalService.createDraftFromQuote).toHaveBeenCalledWith('quote-1');
+    expect(proposalService.createDraftFromQuote).toHaveBeenCalledWith('quote-1', 'admin-1');
   });
 
   it('deletes an existing proposal through the protected route', async () => {

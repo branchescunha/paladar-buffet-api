@@ -38,6 +38,11 @@ enum ProposalStatus {
   CANCELADA
 }
 
+enum ProposalPricingMode {
+  ITEMIZED
+  PER_GUEST
+}
+
 enum AuthEventType {
   LOGIN_SUCCESS
   LOGIN_DENIED
@@ -67,6 +72,7 @@ model AdminUser {
   sessions            AdminSession[]
   passwordResetTokens PasswordResetToken[]
   authEvents          AuthAuditEvent[]
+  responsibleProposals Proposal[] @relation("ProposalResponsible")
 
   @@index([email])
   @@index([isActive])
@@ -147,6 +153,7 @@ model QuoteRequest {
   customer            Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   event               Event?
   proposals           Proposal[]
+  menuSelections      QuoteRequestMenuSelection[]
 
   @@index([createdAt])
   @@index([eventType])
@@ -207,6 +214,11 @@ model Proposal {
   subtotalCents   Int            @default(0)
   adjustmentCents Int            @default(0)
   totalCents      Int            @default(0)
+  pricingMode     ProposalPricingMode @default(ITEMIZED)
+  guestCount      Int?
+  pricePerGuestCents Int?
+  baseTotalCents  Int?
+  responsibleAdminId String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -214,12 +226,16 @@ model Proposal {
   event        Event?       @relation(fields: [eventId], references: [id], onDelete: Restrict)
   quoteRequest QuoteRequest? @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
   items        ProposalItem[]
+  includedServices ProposalIncludedService[]
+  paymentInstallments ProposalPaymentInstallment[]
+  responsibleAdmin AdminUser? @relation("ProposalResponsible", fields: [responsibleAdminId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([eventId])
   @@index([quoteRequestId])
   @@index([status])
   @@index([validUntil])
+  @@index([responsibleAdminId])
 }
 
 model ProposalItem {
@@ -232,6 +248,119 @@ model ProposalItem {
   position         Int
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, position])
+  @@index([proposalId])
+}
+
+model MenuSelectionGroup {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  minSelections Int      @default(0)
+  maxSelections Int?
+  position      Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sections MenuSection[]
+
+  @@index([position])
+  @@index([isActive])
+}
+
+model MenuSection {
+  id        String   @id @default(cuid())
+  groupId   String
+  name      String
+  position  Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group   MenuSelectionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  options MenuOption[]
+
+  @@unique([groupId, name])
+  @@index([groupId, position])
+  @@index([isActive])
+}
+
+model MenuOption {
+  id        String   @id @default(cuid())
+  sectionId String
+  name      String
+  position  Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  section        MenuSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  quoteSelections QuoteRequestMenuSelection[]
+
+  @@unique([sectionId, name])
+  @@index([sectionId, position])
+  @@index([isActive])
+}
+
+model QuoteRequestMenuSelection {
+  id              String   @id @default(cuid())
+  quoteRequestId  String
+  menuOptionId    String?
+  groupName       String
+  groupPosition   Int
+  sectionName     String
+  sectionPosition Int
+  optionName      String
+  optionPosition  Int
+  createdAt       DateTime @default(now())
+
+  quoteRequest QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  menuOption   MenuOption?  @relation(fields: [menuOptionId], references: [id], onDelete: Restrict)
+
+  @@unique([quoteRequestId, menuOptionId])
+  @@index([quoteRequestId, groupPosition, sectionPosition, optionPosition])
+  @@index([menuOptionId])
+}
+
+model PaymentMethod {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  instructions String?
+  pixKey       String?
+  position     Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([position])
+  @@index([isActive])
+}
+
+model ProposalIncludedService {
+  id          String   @id @default(cuid())
+  proposalId  String
+  description String
+  position    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, position])
+  @@index([proposalId])
+}
+
+model ProposalPaymentInstallment {
+  id          String   @id @default(cuid())
+  proposalId  String
+  description String
+  percentage  Int
+  position    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 

@@ -14,7 +14,7 @@ export function proposalRoutes(authService: AuthService, service: ProposalServic
     const input = proposalInputSchema.parse(request.body);
     delete input.subtotalCents;
     delete input.totalCents;
-    response.status(201).json(await service.create(input));
+    response.status(201).json(await service.create(input, request.admin!.id));
   }));
   router.get('/:id', requireAuth(authService), requireAdmin, asyncHandler(async (request, response) => { const item = await service.findById(proposalIdSchema.parse(request.params).id); if (!item) throw notFoundError(); response.json(item); }));
   router.get('/:id/pdf', requireAuth(authService), requireAdmin, asyncHandler(async (request, response) => {
@@ -43,6 +43,6 @@ export function proposalRoutes(authService: AuthService, service: ProposalServic
 
 export function quoteProposalRoutes(authService: AuthService, service: ProposalService) {
   const router = Router();
-  router.post('/:id/proposal-draft', requireAuth(authService), requireAdmin, csrfProtection(authService), asyncHandler(async (request, response) => { const item = await service.createDraftFromQuote(proposalIdSchema.parse(request.params).id); if (!item) throw notFoundError(); response.status(201).json(item); }));
+  router.post('/:id/proposal-draft', requireAuth(authService), requireAdmin, csrfProtection(authService), asyncHandler(async (request, response) => { const item = await service.createDraftFromQuote(proposalIdSchema.parse(request.params).id, request.admin!.id); if (!item) throw notFoundError(); response.status(201).json(item); }));
   return router;
 }

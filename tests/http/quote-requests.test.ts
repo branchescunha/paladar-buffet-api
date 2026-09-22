@@ -14,6 +14,7 @@ const validPayload = {
   location: 'Brasilia-DF',
   message: 'Gostaria de um buffet completo para casamento.',
   preferredContact: 'whatsapp',
+  menuOptionIds: ['menu-option-hot-01'],
   acceptedPrivacy: true
 };
 

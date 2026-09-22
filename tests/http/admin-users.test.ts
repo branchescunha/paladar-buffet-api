@@ -13,7 +13,7 @@ function makeAuthService(role: 'OWNER' | 'ADMIN') {
 }
 
 describe('admin user management routes', () => {
-  it('lists administrative users for OWNER only', async () => {
+  it('lists administrative users for OWNER and ADMIN during the role transition', async () => {
     const adminUserService = {
       list: vi.fn().mockResolvedValue([{ id: 'admin-1', name: 'Ana', email: 'ana@paladarbuffet.com', role: 'ADMIN', isActive: true }]),
       setActive: vi.fn(),
@@ -29,17 +29,17 @@ describe('admin user management routes', () => {
 
     expect(ownerResponse.status).toBe(200);
     expect(ownerResponse.body).toEqual([{ id: 'admin-1', name: 'Ana', email: 'ana@paladarbuffet.com', role: 'ADMIN', isActive: true }]);
-    expect(adminResponse.status).toBe(403);
+    expect(adminResponse.status).toBe(200);
   });
 
-  it('changes an ADMIN activity state through the OWNER-only route', async () => {
+  it('allows an ADMIN to change another administrator activity state', async () => {
     const adminUserService = {
       list: vi.fn(),
       setActive: vi.fn().mockResolvedValue({ id: 'admin-1', name: 'Ana', email: 'ana@paladarbuffet.com', role: 'ADMIN', isActive: false }),
       updateOwnName: vi.fn()
     };
 
-    const response = await request(createApp({ authService: makeAuthService('OWNER'), adminUserService } as never))
+    const response = await request(createApp({ authService: makeAuthService('ADMIN'), adminUserService } as never))
       .patch('/admin/users/admin-1/active')
       .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
       .set('x-csrf-token', 'csrf-token')
@@ -47,7 +47,7 @@ describe('admin user management routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ id: 'admin-1', isActive: false });
-    expect(adminUserService.setActive).toHaveBeenCalledWith('admin-1', false);
+    expect(adminUserService.setActive).toHaveBeenCalledWith('admin-1', false, 'owner-1');
   });
 
   it('updates only the authenticated administrator name', async () => {
