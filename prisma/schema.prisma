@@ -325,7 +325,7 @@ model QuoteRequestMenuSelection {
   menuOption   MenuOption?  @relation(fields: [menuOptionId], references: [id], onDelete: Restrict)
 
   @@unique([quoteRequestId, menuOptionId])
-  @@index([quoteRequestId, groupPosition, sectionPosition, optionPosition])
+  @@index([quoteRequestId, groupPosition, sectionPosition, optionPosition], map: "QuoteRequestMenuSelection_quoteRequestId_groupPosition_sectionP")
   @@index([menuOptionId])
 }
 
@@ -372,8 +372,8 @@ model ProposalMenuSelection {
 
   proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 
-  @@unique([proposalId, groupPosition, sectionPosition, optionPosition])
-  @@index([proposalId, groupPosition, sectionPosition, optionPosition])
+  @@unique([proposalId, groupPosition, sectionPosition, optionPosition], map: "ProposalMenuSelection_order_key")
+  @@index([proposalId, groupPosition, sectionPosition, optionPosition], map: "ProposalMenuSelection_order_idx")
 }
 
 model ProposalPaymentMethod {

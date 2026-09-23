@@ -27,10 +27,10 @@ CREATE TABLE "ProposalPaymentMethod" (
   CONSTRAINT "ProposalPaymentMethod_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "ProposalMenuSelection_proposalId_groupPosition_sectionPosition_optionPosition_key"
+CREATE UNIQUE INDEX "ProposalMenuSelection_order_key"
 ON "ProposalMenuSelection"("proposalId", "groupPosition", "sectionPosition", "optionPosition");
 
-CREATE INDEX "ProposalMenuSelection_proposalId_groupPosition_sectionPosition_optionPosition_idx"
+CREATE INDEX "ProposalMenuSelection_order_idx"
 ON "ProposalMenuSelection"("proposalId", "groupPosition", "sectionPosition", "optionPosition");
 
 CREATE UNIQUE INDEX "ProposalPaymentMethod_proposalId_paymentMethodId_key"
