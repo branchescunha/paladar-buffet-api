@@ -1,138 +1,89 @@
 # Paladar Buffet API
 
-API administrativa do Paladar Buffet. Este projeto entrega a fundação backend da versão 1.0.0, com autenticação administrativa, sessões, recuperação de senha, Google Login configurável, Prisma e PostgreSQL.
+API REST do Paladar Buffet responsável por autenticação administrativa, recebimento de solicitações públicas e operação dos módulos comerciais do produto.
 
-## Stack
+## Funcionalidades
+
+- Recebimento público de solicitações de orçamento
+- Catálogo público de cardápio com regras de seleção
+- Autenticação administrativa por senha e Google
+- Sessões, recuperação e troca de senha
+- Dashboard operacional
+- Gestão de solicitações, clientes e eventos
+- Conversão segura de solicitações em cliente e evento
+- Gestão de cardápios e formas de pagamento
+- Propostas por itens (`ITEMIZED`) e por convidado (`PER_GUEST`)
+- Cálculos monetários no backend em centavos
+- Snapshots comerciais de cardápio, pagamentos e responsável
+- Geração de proposta profissional em PDF
+- Exclusão administrativa protegida por integridade referencial
+- Provisionamento idempotente das contas administrativas autorizadas
+
+## Principais módulos
+
+- **Auth:** login, Google Login, sessões, CSRF e recuperação de senha
+- **Quote Requests:** entrada pública, validação, status e detalhes administrativos
+- **CRM:** clientes, eventos e conversão de solicitações
+- **Menu:** grupos, seções, opções e regras de seleção
+- **Payment Methods:** formas de pagamento, instruções e Pix
+- **Proposals:** criação, edição, status, preços, parcelas e snapshots
+- **Proposal PDF:** documento A4 para propostas por itens ou por convidado
+- **Admin Users:** perfil e administração das contas autorizadas
+- **Dashboard:** indicadores e registros recentes
+
+## Arquitetura
+
+A aplicação usa módulos orientados por domínio. As rotas Express validam entrada e autorização, os serviços concentram regras de negócio e os repositórios Prisma realizam a persistência no PostgreSQL.
+
+```text
+src/
+  config/       validação de ambiente
+  lib/          infraestrutura compartilhada
+  middlewares/  logs, request ID e tratamento de erros
+  modules/      módulos de domínio e rotas HTTP
+  shared/       erros, criptografia e utilitários
+  types/        extensões de tipos
+prisma/
+  migrations/   histórico versionado do banco
+  schema.prisma modelos e relacionamentos
+tests/          testes unitários, HTTP e integração
+```
+
+## Segurança
+
+- Senhas com Argon2id
+- Sessões em cookie HttpOnly com revogação server-side
+- Proteção CSRF nas mutações administrativas
+- Google Login restrito a contas previamente autorizadas e e-mail verificado
+- Rate limiting em autenticação e solicitações públicas
+- Helmet, CORS restrito e limite de payload
+- Zod nos contratos de entrada
+- Queries parametrizadas pelo Prisma
+- Logs estruturados com campos sensíveis redigidos
+- Respostas de erro sem stack trace ou detalhes internos
+- Nenhum cadastro público de administrador
+
+## Persistência comercial
+
+O PostgreSQL armazena solicitações, clientes, eventos, propostas e configurações comerciais. Valores financeiros são representados em centavos e recalculados no backend. Propostas preservam snapshots dos dados comerciais para manter o histórico mesmo após mudanças no catálogo.
+
+O Prisma Client utiliza o adaptador PostgreSQL sem engine Rust. A URL pooled atende o runtime e a URL direta é reservada às operações de schema e migrations.
+
+## Tecnologias
 
 - Node.js
 - Express
 - TypeScript
-- Prisma ORM
-- PostgreSQL
+- Prisma ORM e PostgreSQL
+- `@prisma/adapter-pg`
 - Zod
 - Argon2id
 - Google OAuth/OIDC
 - Resend
-- Vitest
-- Supertest
+- PDFKit
+- Pino
+- Vitest e Supertest
 
-## Funcionalidades
+## Autor
 
-- Healthcheck seguro em `GET /health`
-- Validação de environment com Zod
-- Login administrativo por e-mail e senha
-- Google Login para administradores previamente autorizados
-- Logout com revogação de sessão
-- Consulta da sessão atual
-- Recuperação e redefinição de senha
-- Sessão via cookie HttpOnly
-- CSRF por token pareado em cookie/header
-- Rate limiting em rotas sensíveis de autenticação
-- Helmet, CORS restrito e limite de payload
-- Auditoria mínima de eventos de autenticação
-- Prisma schema e migration inicial
-- Seed seguro para desenvolvimento
-- Recebimento público de solicitações de orçamento em `POST /quote-requests`
-- Validação, rate limit e honeypot para solicitações públicas
-
-## Estrutura
-
-```text
-src/
-  config/
-  lib/
-  middlewares/
-  modules/
-    auth/
-    quote-requests/
-  shared/
-  types/
-  app.ts
-  server.ts
-prisma/
-  migrations/
-  schema.prisma
-  seed.ts
-tests/
-```
-
-## Environments
-
-Crie um `.env` local com base em `.env.example`.
-
-Variáveis principais:
-
-- `DATABASE_URL`
-- `DIRECT_URL`
-- `APP_URL`
-- `WEB_URL`
-- `SESSION_SECRET`
-- `SESSION_COOKIE_DOMAIN`
-- `SESSION_SAME_SITE`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `RESEND_API_KEY`
-- `EMAIL_FROM`
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-
-Para provisionamento administrativo:
-
-- `ADMIN_INITIAL_PASSWORD`
-
-## Scripts
-
-- `npm run dev`
-- `npm run build`
-- `npm run start`
-- `npm run lint`
-- `npm run typecheck`
-- `npm run test`
-- `npm run prisma:generate`
-- `npm run prisma:migrate`
-- `npm run prisma:deploy`
-- `npm run seed`
-
-## Autenticação
-
-Não existe cadastro público. Um usuário administrativo só consegue entrar se existir previamente em `AdminUser`, estiver ativo e tiver role `OWNER` ou `ADMIN`.
-
-No login Google, a identidade confirmada pelo Google deve ter e-mail verificado e `sub` correspondente ao `googleId` previamente cadastrado no `AdminUser`. A API também valida se o e-mail do token bate com o e-mail autorizado. A API não cria administrador automaticamente.
-
-Para Neon, use `DATABASE_URL` como connection string pooled para runtime quando aplicável. Use `DIRECT_URL` com a connection string direta para Prisma Migrate, introspection e operações administrativas de schema. Isso evita executar migrations por um pooler.
-
-Para produção com Web e API em subdomínios do mesmo domínio, configure `SESSION_COOKIE_DOMAIN` de forma compatível, por exemplo `.seudominio.com.br`. Se a topologia usar domínios totalmente diferentes, a estratégia de cookie/CSRF deve ser revisada antes do deploy.
-
-## Desenvolvimento Local
-
-1. Instale as dependências com `npm install`.
-2. Configure `.env` usando `.env.example`.
-3. Execute `npm run prisma:generate`.
-4. Execute as migrations com `npm run prisma:migrate`.
-5. Configure `ADMIN_INITIAL_PASSWORD` com uma senha compatível com a política e rode `npm run seed` para provisionar os usuários oficiais.
-
-As instruções acima dependem de um PostgreSQL acessível pelo `DATABASE_URL`.
-
-## Provisionamento Administrativo
-
-O seed não cria conta pública. Ele provisiona somente os sete e-mails oficiais definidos no código, usando `ADMIN_INITIAL_PASSWORD`, armazenada como hash Argon2id individual. O provisionamento pode ser reexecutado: preserva `googleId` e não sobrescreve a senha pessoal depois que `mustChangePassword` se torna `false`.
-
-## Orçamentos Públicos
-
-`POST /quote-requests` recebe solicitações do formulário público do site. A rota não cria usuário, não autentica visitante e retorna apenas um recibo com `id` e `createdAt`.
-
-Campos principais:
-
-- nome
-- telefone
-- e-mail opcional
-- tipo de evento
-- data prevista opcional
-- horário previsto obrigatório
-- quantidade de convidados
-- localidade opcional
-- observações e preferências
-- aceite da política de privacidade
-
-O campo honeypot `website` é aceito apenas como controle anti-spam e não é persistido.
+[André Branches](https://github.com/branchescunha)
