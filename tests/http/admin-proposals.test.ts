@@ -27,7 +27,7 @@ describe('admin proposals', () => {
     const proposalService = { list: vi.fn(), findById: vi.fn(), create: vi.fn().mockResolvedValue({ id: 'proposal-1', subtotalCents: 20000, totalCents: 19000 }), update: vi.fn(), updateStatus: vi.fn(), createDraftFromQuote: vi.fn(), countSent: vi.fn() };
     const response = await request(createApp({ authService, proposalService } as never))
       .post('/admin/proposals').set('Cookie', ['paladar_admin_session=session', 'paladar_csrf=csrf']).set('x-csrf-token', 'csrf')
-      .send({ customerId: 'customer-1', validUntil: '2099-10-01', adjustmentCents: -1000, subtotalCents: 1, totalCents: 1, items: [{ description: 'Buffet', quantity: 2, unitPriceCents: 10000 }] });
+      .send({ customerId: 'customer-1', validUntil: '2099-10-01', pricingMode: 'ITEMIZED', adjustmentCents: -1000, subtotalCents: 1, totalCents: 1, items: [{ description: 'Buffet', quantity: 2, unitPriceCents: 10000 }] });
     expect(response.status).toBe(201);
     expect(proposalService.create.mock.calls[0]?.[0]).not.toHaveProperty('subtotalCents');
     expect(proposalService.create).toHaveBeenCalledWith(expect.any(Object), 'admin-1');

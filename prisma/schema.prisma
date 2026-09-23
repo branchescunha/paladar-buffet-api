@@ -219,6 +219,8 @@ model Proposal {
   pricePerGuestCents Int?
   baseTotalCents  Int?
   responsibleAdminId String?
+  responsibleNameSnapshot String?
+  responsibleTitleSnapshot String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -228,6 +230,8 @@ model Proposal {
   items        ProposalItem[]
   includedServices ProposalIncludedService[]
   paymentInstallments ProposalPaymentInstallment[]
+  menuSelections ProposalMenuSelection[]
+  paymentMethods ProposalPaymentMethod[]
   responsibleAdmin AdminUser? @relation("ProposalResponsible", fields: [responsibleAdminId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
@@ -335,6 +339,8 @@ model PaymentMethod {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  proposalSnapshots ProposalPaymentMethod[]
+
   @@index([position])
   @@index([isActive])
 }
@@ -351,6 +357,42 @@ model ProposalIncludedService {
 
   @@unique([proposalId, position])
   @@index([proposalId])
+}
+
+model ProposalMenuSelection {
+  id              String   @id @default(cuid())
+  proposalId      String
+  groupName       String
+  groupPosition   Int
+  sectionName     String
+  sectionPosition Int
+  optionName      String
+  optionPosition  Int
+  createdAt       DateTime @default(now())
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, groupPosition, sectionPosition, optionPosition])
+  @@index([proposalId, groupPosition, sectionPosition, optionPosition])
+}
+
+model ProposalPaymentMethod {
+  id              String   @id @default(cuid())
+  proposalId      String
+  paymentMethodId String
+  name            String
+  instructions    String?
+  pixKey          String?
+  position        Int
+  createdAt       DateTime @default(now())
+
+  proposal      Proposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+
+  @@unique([proposalId, paymentMethodId])
+  @@unique([proposalId, position])
+  @@index([proposalId])
+  @@index([paymentMethodId])
 }
 
 model ProposalPaymentInstallment {

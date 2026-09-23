@@ -39,6 +39,19 @@ export function validatePaymentSchedule(schedule: PaymentScheduleInput[]) {
   }
 }
 
+export function calculatePaymentAmounts(totalCents: number, schedule: PaymentScheduleInput[]) {
+  validatePaymentSchedule(schedule);
+  let allocatedCents = 0;
+
+  return schedule.map((installment, index) => {
+    const amountCents = index === schedule.length - 1
+      ? totalCents - allocatedCents
+      : Math.floor((totalCents * installment.percentage) / 100);
+    allocatedCents += amountCents;
+    return { ...installment, amountCents };
+  });
+}
+
 export function defaultProposalValidity(from = new Date()) {
   return new Date(from.getTime() + 15 * 24 * 60 * 60 * 1000);
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calculatePaymentAmounts,
   calculatePerGuestTotals,
   defaultPaymentSchedule,
   defaultProposalValidity,
@@ -11,6 +12,10 @@ describe('proposal commercial model', () => {
     expect(calculatePerGuestTotals({ guestCount: 120, pricePerGuestCents: 18990, adjustmentCents: -50000 })).toEqual({
       baseTotalCents: 2278800,
       totalCents: 2228800
+    });
+    expect(calculatePerGuestTotals({ guestCount: 80, pricePerGuestCents: 12990, adjustmentCents: 25000 })).toEqual({
+      baseTotalCents: 1039200,
+      totalCents: 1064200
     });
   });
 
@@ -30,6 +35,16 @@ describe('proposal commercial model', () => {
       { description: 'Reserva', percentage: 40 },
       { description: 'Evento', percentage: 50 }
     ])).toThrow('Os percentuais de pagamento devem totalizar 100%.');
+  });
+
+  it('calculates installment amounts over the final total and assigns the rounding remainder to the last installment', () => {
+    expect(calculatePaymentAmounts(10001, [
+      { description: 'Na contratação', percentage: 50 },
+      { description: 'No dia do evento', percentage: 50 }
+    ])).toEqual([
+      { description: 'Na contratação', percentage: 50, amountCents: 5000 },
+      { description: 'No dia do evento', percentage: 50, amountCents: 5001 }
+    ]);
   });
 
   it('defaults proposal validity to 15 calendar days', () => {

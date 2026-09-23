@@ -24,14 +24,18 @@ interface StoredProposal {
   adjustmentCents: number;
   totalCents: number;
   items: StoredItem[];
+  paymentInstallments: Array<{ description: string; percentage: number; position: number; amountCents?: number }>;
 }
 
 type ItemWrite = Omit<StoredItem, 'id'>;
-type ProposalWrite = Omit<StoredProposal, 'id' | 'status' | 'items'> & {
+type ProposalFields = Omit<StoredProposal, 'id' | 'status' | 'items' | 'paymentInstallments'>;
+type ProposalWrite = ProposalFields & {
   items: { create: ItemWrite[] };
+  paymentInstallments: { create: Array<{ description: string; percentage: number; position: number }> };
 };
-type ProposalUpdate = Omit<ProposalWrite, 'items'> & {
+type ProposalUpdate = ProposalFields & {
   items: { deleteMany: object; create: ItemWrite[] };
+  paymentInstallments: { deleteMany: object; create: Array<{ description: string; percentage: number; position: number }> };
 };
 
 function createStatefulPrisma() {
@@ -44,12 +48,13 @@ function createStatefulPrisma() {
 
   const proposal = {
     create: vi.fn(async ({ data }: { data: ProposalWrite }) => {
-      const { items, ...fields } = data;
+      const { items, paymentInstallments: _paymentInstallments, ...fields } = data;
       const created: StoredProposal = {
         ...fields,
         id: `proposal-${++proposalSequence}`,
         status: 'RASCUNHO',
-        items: writeItems(items.create)
+        items: writeItems(items.create),
+        paymentInstallments: _paymentInstallments.create.map((installment) => ({ ...installment }))
       };
       stored.set(created.id, created);
       return clone(created);
@@ -61,8 +66,13 @@ function createStatefulPrisma() {
     update: vi.fn(async ({ where, data }: { where: { id: string }; data: ProposalUpdate }) => {
       const current = stored.get(where.id);
       if (!current) throw new Error('Proposal not found');
-      const { items, ...fields } = data;
-      const updated: StoredProposal = { ...current, ...fields, items: writeItems(items.create) };
+      const { items, paymentInstallments: _paymentInstallments, ...fields } = data;
+      const updated: StoredProposal = {
+        ...current,
+        ...fields,
+        items: writeItems(items.create),
+        paymentInstallments: _paymentInstallments.create.map((installment) => ({ ...installment }))
+      };
       stored.set(where.id, updated);
       return clone(updated);
     })

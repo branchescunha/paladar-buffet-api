@@ -12,7 +12,8 @@ const perGuestPayload = {
   guestCount: 120,
   pricePerGuestCents: 18990,
   adjustmentCents: -50000,
-  includedServices: ['Buffet', 'Garçons', 'Maître']
+  includedServices: ['Buffet', 'Garçons', 'Maître'],
+  paymentMethodIds: ['payment-pix']
 };
 
 describe('per-guest proposal persistence', () => {
@@ -25,11 +26,13 @@ describe('per-guest proposal persistence', () => {
   });
 
   it('persists backend totals, included services, default 50/50 and the responsible admin', async () => {
-    const create = vi.fn().mockImplementation(async ({ data }) => ({ id: 'proposal-1', ...data }));
+    const create = vi.fn().mockImplementation(async ({ data }) => ({ id: 'proposal-1', ...data, paymentInstallments: data.paymentInstallments.create }));
     const transaction = {
       customer: { findUnique: vi.fn().mockResolvedValue({ id: 'customer-1' }) },
       event: { findUnique: vi.fn().mockResolvedValue({ id: 'event-1', customerId: 'customer-1' }) },
-      quoteRequest: { findUnique: vi.fn().mockResolvedValue({ id: 'quote-1', customerId: 'customer-1', event: { id: 'event-1', customerId: 'customer-1' } }) },
+      quoteRequest: { findUnique: vi.fn().mockResolvedValue({ id: 'quote-1', customerId: 'customer-1', event: { id: 'event-1', customerId: 'customer-1' }, menuSelections: [] }) },
+      adminUser: { findUnique: vi.fn().mockResolvedValue({ id: 'admin-1', name: 'Admin', role: 'ADMIN' }) },
+      paymentMethod: { findMany: vi.fn().mockResolvedValue([{ id: 'payment-pix', name: 'Pix', instructions: null, pixKey: null }]) },
       proposal: { create }
     };
     const prisma = { $transaction: <T>(callback: (client: typeof transaction) => Promise<T>) => callback(transaction) };
@@ -65,6 +68,7 @@ describe('per-guest proposal persistence', () => {
     const parsed = proposalInputSchema.parse({
       customerId: 'customer-1',
       validUntil: '2026-10-07',
+      pricingMode: 'ITEMIZED',
       adjustmentCents: 0,
       items: [{ description: 'Buffet completo', quantity: 100, unitPriceCents: 15000 }]
     });

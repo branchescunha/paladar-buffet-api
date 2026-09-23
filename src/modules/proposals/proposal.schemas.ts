@@ -28,10 +28,11 @@ export const proposalInputSchema = z.object({
   adjustmentCents: z.coerce.number().int().min(-100000000).max(100000000).default(0),
   subtotalCents: z.coerce.number().int().optional(),
   totalCents: z.coerce.number().int().optional(),
-  pricingMode: proposalPricingModeSchema.default('ITEMIZED'),
+  pricingMode: proposalPricingModeSchema.default('PER_GUEST'),
   guestCount: z.coerce.number().int().min(1).max(10000).optional(),
-  pricePerGuestCents: z.coerce.number().int().min(0).max(100000000).optional(),
+  pricePerGuestCents: z.coerce.number().int().min(1).max(100000000).optional(),
   includedServices: z.array(z.string().trim().min(2).max(240)).max(100).default([]),
+  paymentMethodIds: z.array(z.string().trim().min(1).max(64)).max(20).default([]),
   paymentInstallments: z.array(proposalPaymentInstallmentSchema).min(1).max(20).optional(),
   items: z.array(proposalItemSchema).max(100).default([])
 }).strict().superRefine((value, context) => {
@@ -45,6 +46,12 @@ export const proposalInputSchema = z.object({
     if (value.pricePerGuestCents === undefined) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerGuestCents'], message: 'Informe o valor por pessoa.' });
     }
+    if (value.paymentMethodIds.length === 0) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentMethodIds'], message: 'Selecione pelo menos uma forma de pagamento.' });
+    }
+    if (new Set(value.paymentMethodIds).size !== value.paymentMethodIds.length) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentMethodIds'], message: 'As formas de pagamento não podem ser repetidas.' });
+    }
     if (value.paymentInstallments && value.paymentInstallments.reduce((sum, item) => sum + item.percentage, 0) !== 100) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ['paymentInstallments'], message: 'Os percentuais de pagamento devem totalizar 100%.' });
     }
@@ -57,8 +64,9 @@ export const proposalIdSchema = z.object({ id: z.string().trim().min(1).max(64) 
 export const proposalStatusUpdateSchema = z.object({ status: proposalStatusSchema }).strict();
 
 type ParsedProposalInput = z.infer<typeof proposalInputSchema>;
-export type ProposalInput = Omit<ParsedProposalInput, 'pricingMode' | 'includedServices'> & {
+export type ProposalInput = Omit<ParsedProposalInput, 'pricingMode' | 'includedServices' | 'paymentMethodIds'> & {
   pricingMode?: ParsedProposalInput['pricingMode'];
   includedServices?: ParsedProposalInput['includedServices'];
+  paymentMethodIds?: ParsedProposalInput['paymentMethodIds'];
 };
 export type ProposalStatus = z.infer<typeof proposalStatusSchema>;
