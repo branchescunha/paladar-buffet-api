@@ -116,7 +116,17 @@ export class PrismaProposalService implements ProposalService {
         const quote = await tx.quoteRequest.findUnique({ where: { id: quoteRequestId }, include: { event: true, menuSelections: true } });
         if (!quote?.customerId || !quote.event || quote.event.customerId !== quote.customerId) return null;
         const existing = await tx.proposal.findFirst({ where: { quoteRequestId, status: 'RASCUNHO' }, include: proposalDetailInclude });
-        if (existing) return addInstallmentAmounts(existing);
+        if (existing) {
+          if (existing.menuSelections.length === 0 && quote.menuSelections.length > 0) {
+            const hydrated = await tx.proposal.update({
+              where: { id: existing.id },
+              data: { menuSelections: { create: quote.menuSelections.map(toMenuSnapshot) } },
+              include: proposalDetailInclude
+            });
+            return addInstallmentAmounts(hydrated);
+          }
+          return addInstallmentAmounts(existing);
+        }
         const responsible = await resolveResponsible(tx, responsibleAdminId);
         const proposal = await tx.proposal.create({
           data: {
@@ -158,10 +168,10 @@ const proposalDetailInclude = {
   items: { orderBy: { position: 'asc' } },
   includedServices: { orderBy: { position: 'asc' } },
   paymentInstallments: { orderBy: { position: 'asc' } },
-  menuSelections: { orderBy: { groupPosition: 'asc', sectionPosition: 'asc', optionPosition: 'asc' } },
+  menuSelections: { orderBy: [{ groupPosition: 'asc' }, { sectionPosition: 'asc' }, { optionPosition: 'asc' }] },
   paymentMethods: { orderBy: { position: 'asc' } },
   responsibleAdmin: { select: { id: true, name: true, role: true } }
-} as const;
+} satisfies Prisma.ProposalInclude;
 
 function calculateTotals(input: ProposalInput) {
   if (input.pricingMode === 'PER_GUEST') {

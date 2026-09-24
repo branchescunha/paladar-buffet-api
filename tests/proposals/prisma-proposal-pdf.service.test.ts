@@ -81,7 +81,7 @@ describe('PrismaProposalPdfService', () => {
     for (const expected of [
       'Ana Souza', 'Recepção completa', 'Barquete de guacamole', 'Penne ao molho quatro queijos',
       'Salada tropical', 'Filé ao molho madeira', 'Mesa do café', 'Garçons', 'Na contratação',
-      'Cartão de crédito', 'Lethicia Byanca Santos Cunha', 'Gerente Administrativo'
+      'Cartão de crédito', 'Chave: paladar@exemplo.com', 'Lethicia Byanca Santos Cunha', 'Gerente Administrativo'
     ]) {
       expect(extractedText).toContain(expected);
     }

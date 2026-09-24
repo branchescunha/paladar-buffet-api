@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const optionalText = (max: number) => z.string().trim().max(max).optional().transform((value) => value || undefined);
+const optionalText = (max: number) => z.string().trim().max(max).optional().transform((value) => value || null);
 
 export const paymentMethodIdSchema = z.object({ id: z.string().trim().min(1).max(64) }).strict();
 export const paymentMethodInputSchema = z.object({

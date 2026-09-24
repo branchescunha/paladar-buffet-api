@@ -101,6 +101,35 @@ describe('per-guest proposal commercial snapshots', () => {
     }) }));
   });
 
+  it('hydrates menu snapshots once for an existing linked draft without selections', async () => {
+    const hydratedProposal = {
+      id: 'proposal-1', totalCents: 0, paymentInstallments: [], menuSelections: [menuSelection]
+    };
+    const update = vi.fn().mockResolvedValue(hydratedProposal);
+    const transaction = {
+      quoteRequest: { findUnique: vi.fn().mockResolvedValue({
+        id: 'quote-1', customerId: 'customer-1',
+        event: { id: 'event-1', customerId: 'customer-1', guestCount: 80 },
+        menuSelections: [menuSelection]
+      }) },
+      proposal: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'proposal-1', totalCents: 0, paymentInstallments: [], menuSelections: []
+        }),
+        update
+      }
+    };
+    const prisma = { $transaction: <T>(callback: (client: typeof transaction) => Promise<T>) => callback(transaction) };
+
+    const result = await new PrismaProposalService(prisma as never).createDraftFromQuote('quote-1', 'admin-1');
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'proposal-1' },
+      data: { menuSelections: { create: [menuSelection] } }
+    }));
+    expect(result).toMatchObject({ menuSelections: [menuSelection] });
+  });
+
   it('keeps an existing payment snapshot when the global payment data changes', async () => {
     const historicalSnapshot = {
       paymentMethodId: 'payment-pix', name: 'Pix', pixKey: 'snapshot-key', instructions: 'Instrução histórica'

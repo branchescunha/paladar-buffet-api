@@ -101,7 +101,7 @@ describe('menu and payment method routes', () => {
 
     expect(response.status).toBe(201);
     expect(paymentMethodService.create).toHaveBeenCalledWith({
-      name: 'Pix', instructions: undefined, pixKey: undefined, position: 1, isActive: true
+      name: 'Pix', instructions: null, pixKey: null, position: 1, isActive: true
     });
   });
 
@@ -128,5 +128,19 @@ describe('menu and payment method routes', () => {
     });
     expect(removed.status).toBe(204);
     expect(paymentMethodService.delete).toHaveBeenCalledWith('pix');
+  });
+
+  it('normalizes blank optional payment fields to null', async () => {
+    const paymentMethodService = makePaymentMethodService();
+    const response = await request(createApp({ authService, paymentMethodService } as never))
+      .patch('/admin/payment-methods/pix')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token')
+      .send({ name: 'Pix', instructions: '   ', pixKey: '', position: 1, isActive: true });
+
+    expect(response.status).toBe(200);
+    expect(paymentMethodService.update).toHaveBeenCalledWith('pix', {
+      name: 'Pix', instructions: null, pixKey: null, position: 1, isActive: true
+    });
   });
 });

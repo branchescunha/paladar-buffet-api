@@ -151,7 +151,7 @@ function renderPerGuestPdf(proposal: PdfProposal, logo: Buffer) {
       for (const installment of installments) writeText(`${installment.percentage}% - ${installment.description} - ${formatMoney(installment.amountCents)}`);
     }
     for (const method of proposal.paymentMethods ?? []) {
-      writeText([method.name, method.pixKey ? `Chave Pix: ${method.pixKey}` : null, method.instructions].filter(Boolean).join('\n'));
+      writeText([method.name, method.pixKey ? `Chave: ${method.pixKey}` : null, method.instructions].filter(Boolean).join('\n'));
     }
   }
 
