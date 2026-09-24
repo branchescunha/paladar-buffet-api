@@ -3,6 +3,7 @@ import type { AdminQuoteRequestListInput, QuoteRequestStatus } from './admin-quo
 import type { QuoteRequestInput } from './quote-request.schemas.js';
 import type { AdminQuoteRequestDetail, AdminQuoteRequestSummary, DashboardQuoteRequest, QuoteRequestRepository } from './quote-request.service.js';
 import { validateMenuSelections } from '../menu/menu-selection.js';
+import { resourceConflictError } from '../../shared/errors.js';
 
 export class PrismaQuoteRequestRepository implements QuoteRequestRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -110,6 +111,19 @@ export class PrismaQuoteRequestRepository implements QuoteRequestRepository {
   async updateStatus(id: string, status: QuoteRequestStatus) {
     const result = await this.prisma.quoteRequest.updateMany({ where: { id }, data: { status } });
     return result.count ? { id, status } : null;
+  }
+
+  async delete(id: string) {
+    try {
+      await this.prisma.quoteRequest.delete({ where: { id } });
+      return true;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') return false;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        throw resourceConflictError('Esta solicitação possui dependências e não pode ser excluída.');
+      }
+      throw error;
+    }
   }
 }
 

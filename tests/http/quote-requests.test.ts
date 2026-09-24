@@ -44,6 +44,9 @@ function makeService(): QuoteRequestService & { inputs: unknown[] } {
     },
     async updateStatus() {
       return null;
+    },
+    async delete() {
+      return false;
     }
   };
 }

@@ -13,7 +13,7 @@ export function adminUserRoutes(authService: AuthService, service: AdminUserMana
     response.json(await service.list());
   }));
   router.patch('/profile', requireAuth(authService), requireAdmin, csrfProtection(authService), asyncHandler(async (request, response) => {
-    const item = await service.updateOwnName(request.admin!.id, adminProfileSchema.parse(request.body).name);
+    const item = await service.updateOwnProfile(request.admin!.id, adminProfileSchema.parse(request.body));
     if (!item) throw notFoundError();
     response.json(item);
   }));

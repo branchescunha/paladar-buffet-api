@@ -13,6 +13,7 @@ export type AuthEventType =
 export interface AdminUser {
   id: string;
   name: string;
+  commercialTitle: string;
   email: string;
   passwordHash: string | null;
   googleId: string | null;

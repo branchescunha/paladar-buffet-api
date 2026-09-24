@@ -52,4 +52,45 @@ describe('PrismaQuoteRequestRepository menu snapshot persistence', () => {
       })
     }));
   });
+
+  it('deletes only the quote and its own menu snapshots while preserving derived business records', async () => {
+    const database = {
+      quoteRequests: ['quote-1'],
+      menuSelections: [{ id: 'selection-1', quoteRequestId: 'quote-1' }],
+      customers: ['customer-1'],
+      events: [{ id: 'event-1', quoteRequestId: 'quote-1' as string | null }],
+      proposals: [{ id: 'proposal-1', quoteRequestId: 'quote-1' as string | null }]
+    };
+    const prisma = {
+      quoteRequest: {
+        delete: vi.fn(async ({ where }: { where: { id: string } }) => {
+          database.quoteRequests = database.quoteRequests.filter((id) => id !== where.id);
+          database.menuSelections = database.menuSelections.filter((item) => item.quoteRequestId !== where.id);
+          database.events = database.events.map((item) => item.quoteRequestId === where.id ? { ...item, quoteRequestId: null } : item);
+          database.proposals = database.proposals.map((item) => item.quoteRequestId === where.id ? { ...item, quoteRequestId: null } : item);
+          return { id: where.id };
+        }),
+        findMany: vi.fn(async () => database.quoteRequests.map((id) => ({
+          id,
+          fullName: 'Ana Souza',
+          eventType: 'casamento',
+          eventTypeOther: null,
+          eventDate: null,
+          eventTime: '19:00',
+          guestCount: 100,
+          status: 'NOVA',
+          createdAt: new Date('2026-09-22T12:00:00.000Z')
+        })))
+      }
+    };
+    const repository = new PrismaQuoteRequestRepository(prisma as never);
+
+    await expect(repository.delete('quote-1')).resolves.toBe(true);
+    await expect(repository.listLatest(5)).resolves.toEqual([]);
+    expect(database.quoteRequests).toEqual([]);
+    expect(database.menuSelections).toEqual([]);
+    expect(database.customers).toEqual(['customer-1']);
+    expect(database.events).toEqual([{ id: 'event-1', quoteRequestId: null }]);
+    expect(database.proposals).toEqual([{ id: 'proposal-1', quoteRequestId: null }]);
+  });
 });

@@ -238,9 +238,12 @@ async function assertRelationships(tx: Prisma.TransactionClient, input: Proposal
 
 async function resolveResponsible(tx: Prisma.TransactionClient, responsibleAdminId?: string): Promise<ResponsibleSnapshot | undefined> {
   if (!responsibleAdminId) return undefined;
-  const admin = await tx.adminUser.findUnique({ where: { id: responsibleAdminId }, select: { id: true, name: true, role: true } });
+  const admin = await tx.adminUser.findUnique({
+    where: { id: responsibleAdminId },
+    select: { id: true, name: true, commercialTitle: true }
+  });
   if (!admin) throw validationError('Responsável inválido.');
-  return { id: admin.id, name: admin.name, title: 'Administrador' };
+  return { id: admin.id, name: admin.name, title: admin.commercialTitle };
 }
 
 function responsibleData(responsible?: ResponsibleSnapshot) {

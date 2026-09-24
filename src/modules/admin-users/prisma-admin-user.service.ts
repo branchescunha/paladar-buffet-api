@@ -5,6 +5,7 @@ import type { AdminUserManagementService } from './admin-user.service.js';
 const summarySelect = {
   id: true,
   name: true,
+  commercialTitle: true,
   email: true,
   role: true,
   isActive: true
@@ -53,10 +54,10 @@ export class PrismaAdminUserManagementService implements AdminUserManagementServ
     });
   }
 
-  updateOwnName(id: string, name: string) {
+  updateOwnProfile(id: string, input: { name: string; commercialTitle: string }) {
     return this.prisma.adminUser.update({
       where: { id },
-      data: { name },
+      data: input,
       select: summarySelect
     });
   }

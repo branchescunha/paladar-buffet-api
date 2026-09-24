@@ -17,7 +17,7 @@ describe('admin user management routes', () => {
     const adminUserService = {
       list: vi.fn().mockResolvedValue([{ id: 'admin-1', name: 'Ana', email: 'ana@paladarbuffet.com', role: 'ADMIN', isActive: true }]),
       setActive: vi.fn(),
-      updateOwnName: vi.fn()
+      updateOwnProfile: vi.fn()
     };
 
     const ownerResponse = await request(createApp({ authService: makeAuthService('OWNER'), adminUserService } as never))
@@ -36,7 +36,7 @@ describe('admin user management routes', () => {
     const adminUserService = {
       list: vi.fn(),
       setActive: vi.fn().mockResolvedValue({ id: 'admin-1', name: 'Ana', email: 'ana@paladarbuffet.com', role: 'ADMIN', isActive: false }),
-      updateOwnName: vi.fn()
+      updateOwnProfile: vi.fn()
     };
 
     const response = await request(createApp({ authService: makeAuthService('ADMIN'), adminUserService } as never))
@@ -50,21 +50,24 @@ describe('admin user management routes', () => {
     expect(adminUserService.setActive).toHaveBeenCalledWith('admin-1', false, 'owner-1');
   });
 
-  it('updates only the authenticated administrator name', async () => {
+  it('updates only the authenticated administrator commercial profile', async () => {
     const adminUserService = {
       list: vi.fn(),
       setActive: vi.fn(),
-      updateOwnName: vi.fn().mockResolvedValue({ id: 'owner-1', name: 'Mauri Anderson', email: 'owner@paladarbuffet.com', role: 'OWNER', isActive: true })
+      updateOwnProfile: vi.fn().mockResolvedValue({ id: 'owner-1', name: 'Mauri Anderson', commercialTitle: 'Gerente Administrativo', email: 'owner@paladarbuffet.com', role: 'OWNER', isActive: true })
     };
 
     const response = await request(createApp({ authService: makeAuthService('OWNER'), adminUserService } as never))
       .patch('/admin/users/profile')
       .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
       .set('x-csrf-token', 'csrf-token')
-      .send({ name: 'Mauri Anderson' });
+      .send({ name: 'Mauri Anderson', commercialTitle: 'Gerente Administrativo' });
 
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ id: 'owner-1', name: 'Mauri Anderson' });
-    expect(adminUserService.updateOwnName).toHaveBeenCalledWith('owner-1', 'Mauri Anderson');
+    expect(response.body).toMatchObject({ id: 'owner-1', name: 'Mauri Anderson', commercialTitle: 'Gerente Administrativo' });
+    expect(adminUserService.updateOwnProfile).toHaveBeenCalledWith('owner-1', {
+      name: 'Mauri Anderson',
+      commercialTitle: 'Gerente Administrativo'
+    });
   });
 });

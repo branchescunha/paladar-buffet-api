@@ -57,6 +57,7 @@ enum AuthEventType {
 model AdminUser {
   id                 String    @id @default(cuid())
   name               String
+  commercialTitle    String    @default("Administrador")
   email              String    @unique
   passwordHash       String?
   googleId           String?   @unique

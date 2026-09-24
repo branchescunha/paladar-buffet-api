@@ -63,6 +63,23 @@ export function adminQuoteRequestRoutes(
     })
   );
 
+  router.delete(
+    '/:id',
+    requireAuth(authService),
+    requireAdmin,
+    csrfProtection(authService),
+    asyncHandler(async (request, response) => {
+      const { id } = adminQuoteRequestParamsSchema.parse(request.params);
+      const deleted = await quoteRequestService.delete(id);
+
+      if (!deleted) {
+        throw notFoundError();
+      }
+
+      response.status(204).send();
+    })
+  );
+
   router.post(
     '/:id/convert',
     requireAuth(authService),

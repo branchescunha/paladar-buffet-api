@@ -50,6 +50,7 @@ export interface QuoteRequestRepository {
   listAdmin(input: AdminQuoteRequestListInput): Promise<{ items: AdminQuoteRequestSummary[]; total: number }>;
   findAdminById(id: string): Promise<AdminQuoteRequestDetail | null>;
   updateStatus(id: string, status: QuoteRequestStatus): Promise<{ id: string; status: QuoteRequestStatus } | null>;
+  delete(id: string): Promise<boolean>;
 }
 
 export interface QuoteRequestService {
@@ -59,6 +60,7 @@ export interface QuoteRequestService {
   listAdmin(input: AdminQuoteRequestListInput): Promise<{ items: AdminQuoteRequestSummary[]; total: number }>;
   findAdminById(id: string): Promise<AdminQuoteRequestDetail | null>;
   updateStatus(id: string, status: QuoteRequestStatus): Promise<{ id: string; status: QuoteRequestStatus } | null>;
+  delete(id: string): Promise<boolean>;
 }
 
 export class DefaultQuoteRequestService implements QuoteRequestService {
@@ -86,5 +88,9 @@ export class DefaultQuoteRequestService implements QuoteRequestService {
 
   updateStatus(id: string, status: QuoteRequestStatus) {
     return this.repository.updateStatus(id, status);
+  }
+
+  delete(id: string) {
+    return this.repository.delete(id);
   }
 }

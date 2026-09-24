@@ -17,6 +17,22 @@ function makePrisma(role: 'OWNER' | 'ADMIN' = 'ADMIN', activeOthers = 1) {
 }
 
 describe('PrismaAdminUserManagementService', () => {
+  it('updates name and commercial title without changing the authorization role', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 'admin-1', name: 'Lethicia Byanca Santos Cunha', commercialTitle: 'Gerente Administrativo', email: 'lethicia@example.com', role: 'ADMIN', isActive: true });
+    const service = new PrismaAdminUserManagementService({ adminUser: { update } } as never);
+
+    const result = await service.updateOwnProfile('admin-1', {
+      name: 'Lethicia Byanca Santos Cunha',
+      commercialTitle: 'Gerente Administrativo'
+    });
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'admin-1' },
+      data: { name: 'Lethicia Byanca Santos Cunha', commercialTitle: 'Gerente Administrativo' }
+    }));
+    expect(result).toMatchObject({ role: 'ADMIN', commercialTitle: 'Gerente Administrativo' });
+  });
+
   it('deactivates an ADMIN and revokes every active session in the same transaction', async () => {
     const { prisma, update, updateMany } = makePrisma();
     const service = new PrismaAdminUserManagementService(prisma);

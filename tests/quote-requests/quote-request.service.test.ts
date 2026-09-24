@@ -26,4 +26,12 @@ describe('DefaultQuoteRequestService', () => {
     await expect(service.listLatest()).resolves.toEqual(latestRequests);
     expect(repository.listLatest).toHaveBeenCalledWith(5);
   });
+
+  it('deletes an administrative quote request through the repository', async () => {
+    const repository = { delete: vi.fn().mockResolvedValue(true) };
+    const service = new DefaultQuoteRequestService(repository as unknown as QuoteRequestRepository);
+
+    await expect(service.delete('quote-1')).resolves.toBe(true);
+    expect(repository.delete).toHaveBeenCalledWith('quote-1');
+  });
 });

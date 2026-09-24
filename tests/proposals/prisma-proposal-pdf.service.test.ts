@@ -69,7 +69,7 @@ describe('PrismaProposalPdfService', () => {
         { name: 'Cartão de crédito', pixKey: null, instructions: 'Condições conforme alinhamento comercial.', position: 1 }
       ],
       menuSelections,
-      responsibleNameSnapshot: 'André Cunha', responsibleTitleSnapshot: 'Administrador'
+      responsibleNameSnapshot: 'Lethicia Byanca Santos Cunha', responsibleTitleSnapshot: 'Gerente Administrativo'
     });
     const service = new PrismaProposalPdfService({ proposal: { findUnique } } as never);
 
@@ -81,7 +81,7 @@ describe('PrismaProposalPdfService', () => {
     for (const expected of [
       'Ana Souza', 'Recepção completa', 'Barquete de guacamole', 'Penne ao molho quatro queijos',
       'Salada tropical', 'Filé ao molho madeira', 'Mesa do café', 'Garçons', 'Na contratação',
-      'Cartão de crédito', 'André Cunha'
+      'Cartão de crédito', 'Lethicia Byanca Santos Cunha', 'Gerente Administrativo'
     ]) {
       expect(extractedText).toContain(expected);
     }

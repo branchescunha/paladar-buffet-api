@@ -40,7 +40,7 @@ describe('per-guest proposal commercial snapshots', () => {
       quoteRequest: { findUnique: vi.fn().mockResolvedValue({
         id: 'quote-1', customerId: 'customer-1', event: { id: 'event-1', customerId: 'customer-1' }, menuSelections: [menuSelection]
       }) },
-      adminUser: { findUnique: vi.fn().mockResolvedValue({ id: 'admin-1', name: 'André Cunha', role: 'ADMIN' }) },
+      adminUser: { findUnique: vi.fn().mockResolvedValue({ id: 'admin-1', name: 'Lethicia Byanca Santos Cunha', commercialTitle: 'Gerente Administrativo', role: 'ADMIN' }) },
       paymentMethod: { findMany: vi.fn().mockResolvedValue([
         { id: 'payment-pix', name: 'Pix', pixKey: 'snapshot-key', instructions: 'Na contratação', isActive: true }
       ]) },
@@ -62,8 +62,8 @@ describe('per-guest proposal commercial snapshots', () => {
       adjustmentCents: -50000,
       totalCents: 2228800,
       responsibleAdminId: 'admin-1',
-      responsibleNameSnapshot: 'André Cunha',
-      responsibleTitleSnapshot: 'Administrador',
+      responsibleNameSnapshot: 'Lethicia Byanca Santos Cunha',
+      responsibleTitleSnapshot: 'Gerente Administrativo',
       items: { create: [] },
       menuSelections: { create: [menuSelection] },
       paymentMethods: { create: [{
@@ -83,7 +83,7 @@ describe('per-guest proposal commercial snapshots', () => {
         event: { id: 'event-1', customerId: 'customer-1', guestCount: 80 },
         menuSelections: [menuSelection]
       }) },
-      adminUser: { findUnique: vi.fn().mockResolvedValue({ id: 'admin-1', name: 'André Cunha', role: 'ADMIN' }) },
+      adminUser: { findUnique: vi.fn().mockResolvedValue({ id: 'admin-1', name: 'Lethicia Byanca Santos Cunha', commercialTitle: 'Gerente Administrativo', role: 'ADMIN' }) },
       proposal: { findFirst: vi.fn().mockResolvedValue(null), create }
     };
     const prisma = { $transaction: <T>(callback: (client: typeof transaction) => Promise<T>) => callback(transaction) };
@@ -94,7 +94,8 @@ describe('per-guest proposal commercial snapshots', () => {
       pricingMode: 'PER_GUEST',
       guestCount: 80,
       pricePerGuestCents: null,
-      responsibleNameSnapshot: 'André Cunha',
+      responsibleNameSnapshot: 'Lethicia Byanca Santos Cunha',
+      responsibleTitleSnapshot: 'Gerente Administrativo',
       items: { create: [] },
       menuSelections: { create: [menuSelection] }
     }) }));
@@ -126,6 +127,10 @@ describe('per-guest proposal commercial snapshots', () => {
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
       paymentMethods: { deleteMany: {}, create: [{ ...historicalSnapshot, position: 0 }] }
     }) }));
+    const data = update.mock.calls[0]?.[0].data;
+    expect(data).not.toHaveProperty('responsibleNameSnapshot');
+    expect(data).not.toHaveProperty('responsibleTitleSnapshot');
+    expect(data).not.toHaveProperty('responsibleAdminId');
   });
 
   it('rejects a newly selected inactive payment method', async () => {

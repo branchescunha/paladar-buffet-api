@@ -8,6 +8,7 @@ type QuoteRequestServiceMock = QuoteRequestService & {
   listAdmin: ReturnType<typeof vi.fn>;
   findAdminById: ReturnType<typeof vi.fn>;
   updateStatus: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
 };
 
 function makeAuthService(role: 'OWNER' | 'ADMIN' = 'ADMIN') {
@@ -50,7 +51,8 @@ function makeQuoteRequestService(): QuoteRequestServiceMock {
       total: 1
     }),
     findAdminById: vi.fn(),
-    updateStatus: vi.fn().mockResolvedValue({ id: 'quote-1', status: 'EM_ANALISE' })
+    updateStatus: vi.fn().mockResolvedValue({ id: 'quote-1', status: 'EM_ANALISE' }),
+    delete: vi.fn().mockResolvedValue(true)
   } as unknown as QuoteRequestServiceMock;
 }
 
@@ -124,5 +126,27 @@ describe('admin quote requests', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ id: 'quote-1', status: 'EM_ANALISE' });
     expect(quoteRequestService.updateStatus).toHaveBeenCalledWith('quote-1', 'EM_ANALISE');
+  });
+
+  it('deletes a request through authenticated and CSRF-protected administration', async () => {
+    const quoteRequestService = makeQuoteRequestService();
+    const response = await request(createApp({ authService: makeAuthService(), quoteRequestService }))
+      .delete('/admin/quote-requests/quote-1')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(204);
+    expect(quoteRequestService.delete).toHaveBeenCalledWith('quote-1');
+  });
+
+  it('returns not found when deleting a missing request', async () => {
+    const quoteRequestService = makeQuoteRequestService();
+    quoteRequestService.delete.mockResolvedValue(false);
+    const response = await request(createApp({ authService: makeAuthService(), quoteRequestService }))
+      .delete('/admin/quote-requests/missing')
+      .set('Cookie', ['paladar_admin_session=session-token', 'paladar_csrf=csrf-token'])
+      .set('x-csrf-token', 'csrf-token');
+
+    expect(response.status).toBe(404);
   });
 });

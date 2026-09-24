@@ -227,6 +227,7 @@ export class AuthService {
     return {
       id: admin.id,
       name: admin.name,
+      commercialTitle: admin.commercialTitle,
       email: admin.email,
       role: admin.role,
       avatarUrl: admin.avatarUrl,

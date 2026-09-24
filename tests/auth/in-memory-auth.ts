@@ -16,6 +16,7 @@ export function makeAdmin(overrides: Partial<AdminUser> = {}): AdminUser {
   return {
     id: 'admin-1',
     name: 'Andre Cunha',
+    commercialTitle: 'Administrador',
     email: 'admin@paladarbuffet.com.br',
     passwordHash: null,
     googleId: null,
